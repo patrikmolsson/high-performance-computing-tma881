@@ -1,0 +1,4 @@
+./setup.py --cc=gcc --fc=gfortran --blaslib=/usr/lib/libblas/libblas.so --lapacklib=/usr/lib/liblapack.so --notesting
+cd build/plasma_2.8.0/testing/
+make
+./plasma_testing.py
