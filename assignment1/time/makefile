@@ -15,10 +15,12 @@ $(OBJS) : $(SOURCE)
 
 time : $(OBJS)
 	@echo "Starting the timing. The program will be run $(TIMES) times for each optimisation flag in '$(OPTFLAGS)'."
-	@$(foreach opt, $(OPTFLAGS),\
-	  $(CC) $(OBJS) -O$(opt) -o main$(opt); \
-	  printf "\nTime for -O$(opt) flag:"; \
-	  time for i in {0..$(TIMES)}; do ./main$(opt) > /dev/null; done; \
+	@$(foreach opt,$(OPTFLAGS), \
+		$(CC) $(OBJS) -O$(opt) -o main$(opt) ; \
+		printf "\nTime for -O$(opt) flag:" ; \
+		time for i in {0..$(TIMES)} ; do \
+			./main$(opt) >/dev/null ; \
+		done ; \
 	)
 
 clean:
@@ -27,5 +29,5 @@ clean:
 assembler: $(SOURCE)
 	@echo "Creating the assembly files for optimisation flags in '$(OPTFLAGS)'."
 	@$(foreach opt, $(OPTFLAGS),\
-	  $(CC) $(SOURCE) -O$(opt) -o main$(opt).s -S; \
+		$(CC) $(SOURCE) -O$(opt) -o main$(opt).s -S; \
 	)
