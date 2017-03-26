@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+typedef void (*FUNC_PTR)(double *, double *, double *, double *, double *, double *, int);
+
 int rand_lim(int limit) {
 /* return a random number between 0 and limit inclusive.
  */
@@ -63,6 +65,14 @@ void multiply_arrays_man_inline(double * a_re, double * a_im, double * b_re, dou
   }
 }
 
+double benchmark_funcs(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr, FUNC_PTR func){
+  clock_t begin = clock();
+  func(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
+  clock_t end = clock();
+  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+  return time_spent;
+}
+
 int main(){
   int length_arr = 30000;
   int limit = 20;
@@ -74,23 +84,14 @@ int main(){
   double c_im[length_arr];
   initialize_arrays(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, limit);
 
-  clock_t begin = clock();
-  multiply_arrays(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
-  clock_t end = clock();
-  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-  printf("%s %f \n","Time for mul_cpx: \n", time_spent);
+  double time_cpx = benchmark_funcs(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays);
+  printf("%s %f \n","Time for mul_cpx: \n", time_cpx);
 
-  begin = clock();
-  multiply_arrays_sep(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
-  end = clock();
-  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-  printf("%s %f \n","Time for mul_cpx_sep: \n", time_spent);
+  double time_cpx_sep = benchmark_funcs(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_sep);
+  printf("%s %f \n","Time for mul_cpx_sep: \n", time_cpx_sep);
 
-  begin = clock();
-  multiply_arrays_man_inline(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
-  end = clock();
-  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-  printf("%s %f \n","Time for mul_cpx_inline: \n", time_spent);
+  double time_man_inline = benchmark_funcs(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_man_inline);
+  printf("%s %f \n","Time for mul_cpx_inline: \n", time_man_inline);
 
   return 0;
 }
