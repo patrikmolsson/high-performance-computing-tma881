@@ -6,6 +6,6 @@ int main() {
 
   sum = maxCap*(maxCap+1)/2;
 
-  printf("%li", sum);
+  printf("%li \n", sum);
   return 0;
 }
