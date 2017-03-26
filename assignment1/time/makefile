@@ -18,9 +18,9 @@ time : $(OBJS)
 	@$(foreach opt,$(OPTFLAGS), \
 		$(CC) $(OBJS) -O$(opt) -o main$(opt) ; \
 		printf "\nTime for -O$(opt) flag:" ; \
-		time for i in {0..$(TIMES)} ; do \
+		bash -c 'time for i in {0..$(TIMES)} ; do \
 			./main$(opt) >/dev/null ; \
-		done ; \
+		done'; \
 	)
 
 clean:
