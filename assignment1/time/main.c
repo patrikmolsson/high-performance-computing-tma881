@@ -1,18 +1,14 @@
 #include <stdio.h>
 
-long sumNFirst(long maxCap){
-  long sum = 0;
-  for (long i = 0; i <= maxCap; i++){
-    sum += i;
-  }
-  return sum;
-}
-
 int main() {
   long maxCap = 1000000000;
-  long sum = sumNFirst(maxCap);
+  long sum = 0;
 
-  //long sum = maxCap*(maxCap+1)/2;
+  // Use loop instead of sum = maxCap*(maxCap+1)/2
+  // for more interesting analysis in the assignment
+  for (long i = 1; i <= maxCap; i++){
+    sum += i;
+  }
 
   printf("%li \n", sum);
   return 0;

@@ -13,13 +13,13 @@ main : $(OBJS)
 
 $(OBJS) : $(SOURCE)
 
-time : $(OBJS)
+time :
 	@echo "Starting the timing. The program will be run $(TIMES) times for each optimisation flag in '$(OPTFLAGS)'."
 	@$(foreach opt,$(OPTFLAGS), \
 		$(CC) $(SOURCE) -O$(opt) -o main$(opt) ; \
 		printf "\nTime for -O$(opt) flag:" ; \
-		bash -c 'time for i in {0..$(TIMES)} ; do \
-			./main$(opt) >/dev/null ; \
+		bash -c 'time for i in {1..$(TIMES)} ; do \
+			./main$(opt) &> /dev/null ; \
 		done'; \
 	)
 
