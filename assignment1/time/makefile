@@ -2,7 +2,7 @@ OBJS = main.o
 SOURCE = main.c
 CC = gcc
 OPTFLAGS = 0 1 2 3 s fast
-TIMES = 1000
+TIMES = 10
 
 .PHONY : all clean time assembler
 
@@ -16,7 +16,7 @@ $(OBJS) : $(SOURCE)
 time : $(OBJS)
 	@echo "Starting the timing. The program will be run $(TIMES) times for each optimisation flag in '$(OPTFLAGS)'."
 	@$(foreach opt,$(OPTFLAGS), \
-		$(CC) $(OBJS) -O$(opt) -o main$(opt) ; \
+		$(CC) $(SOURCE) -O$(opt) -o main$(opt) ; \
 		printf "\nTime for -O$(opt) flag:" ; \
 		bash -c 'time for i in {0..$(TIMES)} ; do \
 			./main$(opt) >/dev/null ; \
