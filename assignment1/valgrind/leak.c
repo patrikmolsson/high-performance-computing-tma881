@@ -3,7 +3,7 @@
 void allocate_array(size_t n){
   int *nelson_mandela;
   nelson_mandela = (int *) malloc (sizeof(int) * n);
-  //free(nelson_mandela);
+  free(nelson_mandela);
 }
 
 int main(){
