@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 size_t rand_lim(size_t limit) {
 /* return a random number between 0 and limit inclusive.
@@ -15,7 +16,8 @@ size_t rand_lim(size_t limit) {
   return retval;
 }
 
-void row_sums(double * sums, const double ** matrix, size_t nrs, size_t ncs){
+//Changed from **matrix to matrix[][], is this ok?
+void row_sums(size_t nrs, size_t ncs,double sums[nrs], const double matrix[nrs][ncs]){
   for ( size_t ix=0; ix < nrs; ++ix ) {
     double sum = 0;
     for ( size_t jx=0; jx < ncs; ++jx )
@@ -24,7 +26,7 @@ void row_sums(double * sums, const double ** matrix, size_t nrs, size_t ncs){
   }
 }
 
-void col_sums(double * sums, const double ** matrix, size_t nrs, size_t ncs){
+void col_sums(size_t nrs, size_t ncs, double sums[nrs], const double matrix[nrs][ncs]){
   for ( size_t jx=0; jx < ncs; ++jx ) {
     double sum = 0;
     for ( size_t ix=0; ix < nrs; ++ix )
@@ -33,7 +35,7 @@ void col_sums(double * sums, const double ** matrix, size_t nrs, size_t ncs){
   }
 }
 
-void fill_matrix(double ** matrix, size_t nrs, size_t ncs, size_t limit){
+void fill_matrix(size_t nrs, size_t ncs, double matrix[nrs][ncs], size_t limit){
   for ( size_t ix=0; ix < nrs; ++ix ) {
     for ( size_t jx=0; jx < ncs; ++jx ){
       double tmp = rand_lim(limit);
@@ -44,33 +46,25 @@ void fill_matrix(double ** matrix, size_t nrs, size_t ncs, size_t limit){
 }
 
 int main(){
-  //double test[10][10];
-
   size_t nrs = 1000, ncs = 1000, limit = 100;
-  double **matrix;
-  double *sums;
+  double matrix[nrs][ncs];
+  double sums[nrs];
 
-  // Allocate
-  matrix = malloc(nrs * sizeof *matrix);
-  sums = malloc(nrs * sizeof *sums);
+  fill_matrix(nrs, ncs, matrix, limit);
 
-  for (size_t i=0; i < nrs; i++){
-    matrix[i] = malloc(ncs * sizeof *matrix[i]);
-  }
+  // Not sure if we should time here or use the makefile thingy
+  clock_t begin = clock();
+  col_sums(nrs, ncs, sums, matrix);
+  clock_t end = clock();
+  double time_col_sums = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  fill_matrix(matrix, nrs, ncs, limit);
-  //fill_matrix(&test, 10, 10, limit);
-  //col_sums(sums, matrix, nrs, ncs);
+  row_sums(nrs, ncs, sums, matrix);
+  begin = clock();
+  row_sums(nrs, ncs, sums, matrix);
+  end = clock();
+  double time_row_sums = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  // Deallocate
-  for (size_t i = 0; i < nrs; i++){
-    free(matrix[i]);
-  }
-
-  free(sums);
-  free(matrix);
-
+  printf("colsums: %f rowsums: %f \n", time_col_sums, time_row_sums);
 
 	return 0;
-
 }
