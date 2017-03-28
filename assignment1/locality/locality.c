@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 size_t rand_lim(size_t limit) {
 /* return a random number between 0 and limit inclusive.
@@ -35,6 +36,26 @@ void col_sums(size_t nrs, size_t ncs, double sums[nrs], const double matrix[nrs]
   }
 }
 
+void col_sums2(size_t nrs, size_t ncs, double sums[nrs], const double matrix[nrs][ncs]){
+  for ( size_t ix=0; ix < nrs; ++ix ){
+    for ( size_t jx=0; jx < ncs; ++jx ) {
+        sums[jx] = sums[jx] + matrix[ix][jx];
+    }
+  }
+}
+
+int check_col_sums(size_t nrs, double sums[nrs], double sums2[nrs], double tol){
+  int same = 1;
+  for ( size_t ix=0; ix < nrs; ++ix ){
+    double diff = sums[ix] - sums2[ix];
+    if ( fabs(diff) > tol ){
+      printf("sum %f sum2 %f \n", sums[ix], sums2[ix]);
+      return same = 0;
+    }
+  }
+  return same;
+}
+
 void fill_matrix(size_t nrs, size_t ncs, double matrix[nrs][ncs], size_t limit){
   for ( size_t ix=0; ix < nrs; ++ix ) {
     for ( size_t jx=0; jx < ncs; ++jx ){
@@ -49,21 +70,32 @@ int main(){
   size_t nrs = 1000, ncs = 1000, limit = 100;
   double matrix[nrs][ncs];
   double sums[nrs];
+  double sums2[nrs];
+  double tol = 0.001;
 
   fill_matrix(nrs, ncs, matrix, limit);
 
   // Not sure if we should time here or use the makefile thingy
+
   clock_t begin = clock();
-  col_sums(nrs, ncs, sums, matrix);
+  row_sums(nrs, ncs, sums, matrix);
   clock_t end = clock();
+  double time_row_sums = (double)(end - begin) / CLOCKS_PER_SEC;
+
+  begin = clock();
+  col_sums(nrs, ncs, sums, matrix);
+  end = clock();
   double time_col_sums = (double)(end - begin) / CLOCKS_PER_SEC;
 
   begin = clock();
-  row_sums(nrs, ncs, sums, matrix);
+  col_sums2(nrs, ncs, sums2, matrix);
   end = clock();
-  double time_row_sums = (double)(end - begin) / CLOCKS_PER_SEC;
+  double time_col_sums2 = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  printf("colsums: %f rowsums: %f \n", time_col_sums, time_row_sums);
+  int same = check_col_sums(nrs, sums, sums2, tol);
+
+  printf("colsums time: %f colsums2 time: %f rowsums time: %f \n", time_col_sums, time_col_sums2, time_row_sums);
+  printf("%s %d\n","Are colsum and colsum2 the same?", same);
 
 	return 0;
 }
