@@ -58,7 +58,6 @@ int main(){
   clock_t end = clock();
   double time_col_sums = (double)(end - begin) / CLOCKS_PER_SEC;
 
-  row_sums(nrs, ncs, sums, matrix);
   begin = clock();
   row_sums(nrs, ncs, sums, matrix);
   end = clock();
