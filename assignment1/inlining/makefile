@@ -1,3 +1,4 @@
+SOURCE = inlining.c inliningSep.c
 OBJS   = inlining.o
 CC     = gcc
 
@@ -6,7 +7,7 @@ CC     = gcc
 inlining : $(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(OBJS)
 
-inlining.o : inlining.c inliningSep.c
+$(OBJS) : $(SOURCE)
 
 clean:
 	rm -f $(OBJS) inlining
