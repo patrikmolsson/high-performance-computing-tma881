@@ -1,11 +1,11 @@
-OBJS   = indirect_addressing.o
-SOURCE = indirect_addressing.c
+OBJS   = main.o
+SOURCE = main.c
 CC     = gcc
 
 
 .PHONY : clean
 
-indirect_addressing : $(OBJS)
+main : $(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(OBJS)
 
 $(OBJS) : $(SOURCE)
