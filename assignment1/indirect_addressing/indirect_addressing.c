@@ -63,20 +63,20 @@ int main(){
     size_t m = 1000;
     size_t *p; //Unsigned pga, we it know will be indices in p
     int *y, *x;
-    const int a = 3;
-    const size_t reps = 1000; 
+    const int a = 3; // Not changing the coefficient
+    const size_t reps = 1000; // Number of executions for timing.
     p = (size_t*) malloc(n*sizeof(size_t) );
-    y = (int*) calloc(n,sizeof(int) );
+    y = (int*) calloc(n,sizeof(int) ); // y zero vector initially
     x = (int*) malloc(n*sizeof(int) );
      
-    gen_indices(n, p);
-    init_x(n,x);
+    gen_indices(n, p); // Fill the vector p with indices
+    init_x(n,x); // Fill the addition vector
     
     double ind_time = benchmark_function(y, x, p, n, a, *indirect_sum, reps);
     printf("Time indirect sum = %f \n",ind_time);
-    
+        
     double dir_time = benchmark_function(y, x, p, n, a, *direct_sum, reps);
-    printf("Time indirect sum = %f \n",dir_time);
+    printf("Time direct sum = %f \n",dir_time);
     
 
     free(p);
