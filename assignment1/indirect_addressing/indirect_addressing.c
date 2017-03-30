@@ -19,19 +19,19 @@ typedef void (*FUNC_PTR)( int*, int*, size_t*, size_t, int );
     printf("Current time: %"PRIdMAX".%05ld seconds since the Epoch\n",(intmax_t)s, ms);
 }*/
 
-void gen_indices( size_t n, size_t *p ){
+void gen_indices(const size_t n, size_t *p ){
     for( size_t ix = 0; ix < n; ++ix ){
         p[ix] = ix;
     }
 }
 
-void init_x( size_t n, int *x ){
+void init_x(const size_t n, int *x ){
     for( size_t ix = 0; ix < n; ++ix ){
         x[ix] = rand() % 50;
     }
 }
 
-void indirect_sum( int *y, int *x, size_t *p, size_t n, int a ){
+void indirect_sum( int *y, int *x, size_t *p, const size_t n, const int a ){
     size_t jx;
     for ( size_t kx = 0; kx < n; ++kx){
         jx = p[kx];
@@ -39,14 +39,14 @@ void indirect_sum( int *y, int *x, size_t *p, size_t n, int a ){
     }
 }
 
-void direct_sum( int *y, int *x, size_t *p, size_t n, int a ){
+void direct_sum( int *y, int *x, size_t *p, const size_t n, const int a ){
     for ( size_t kx = 0; kx < n; ++kx){
         y[kx] += a * x[kx];
     }
 }
 
-double benchmark_function(int *y, int *x, size_t *p, size_t n, int a, FUNC_PTR
-func, size_t reps){
+double benchmark_function(int *y, int *x, size_t *p, const size_t n, const int a, FUNC_PTR
+func, const size_t reps){
     double time_tot = 0;
     clock_t begin, end;
     for(size_t i = 0; i < reps; ++i){        
@@ -59,12 +59,12 @@ func, size_t reps){
 }
 
 int main(){
-    size_t n = 1000000;
+    const size_t n = 1000000;
     size_t m = 1000;
-    size_t *p; //Pga know will be indices in p
+    size_t *p; //Unsigned pga, we it know will be indices in p
     int *y, *x;
-    int a = 3;
-    size_t reps = 1000; 
+    const int a = 3;
+    const size_t reps = 1000; 
     p = (size_t*) malloc(n*sizeof(size_t) );
     y = (int*) calloc(n,sizeof(int) );
     x = (int*) malloc(n*sizeof(int) );
