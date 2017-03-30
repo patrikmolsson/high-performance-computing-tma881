@@ -1,12 +1,12 @@
-SOURCE = leak.c
-OBJS = leak.o
+SOURCE = main.c
+OBJS = main.o
 CC = gcc
 
 .PHONY : all clean check
 
-all : leak
+all : main
 
-leak : $(OBJS)
+main : $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
 $(OBJS) : $(SOURCE)
