@@ -1,5 +1,5 @@
-SOURCE = inlining.c inliningSep.c
-OBJS   = inlining.o
+SOURCE = main.c inliningSep.c
+OBJS   = main.o
 CC     = gcc
 
 .PHONY : clean
