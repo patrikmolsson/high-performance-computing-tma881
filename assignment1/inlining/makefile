@@ -4,7 +4,7 @@ CC     = gcc
 
 .PHONY : clean
 
-inlining : $(OBJS)
+main : $(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(OBJS)
 
 $(OBJS) : $(SOURCE)
