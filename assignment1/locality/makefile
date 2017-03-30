@@ -2,7 +2,7 @@ SOURCE = main.c
 OBJS = main.o
 CC = gcc
 
-.PHONY : all
+.PHONY : all clean
 
 main : $(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(OBJS)
