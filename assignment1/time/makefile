@@ -1,7 +1,7 @@
 OBJS = main.o
 SOURCE = main.c
 CC = gcc
-OPTFLAGS = 0 1 2 3 s fast
+OPTFLAGS = 0 1 2 3 s g
 TIMES = 10
 
 .PHONY : all clean time assembler
