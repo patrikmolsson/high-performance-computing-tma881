@@ -45,14 +45,12 @@ functions in different files, thus causing the increased running time.
 The function inlined by hand was the fastest, this is because
 the program skips the function overhead(i.e. no need for call or return sequences).
 
-When running with optimization flag -O3 the yields averaged running times
-
-Time for mul\_cpx:
- 7.02799487e-05
-Time for mul\_cpx\_sep:
- 9.43747255e-05
-Time for mul\_cpx\_inline:
- 7.02518996e-05
+When running with optimization flag -O3 this yields averaged running times
+| Method | Time |
+| ------ | ---- |
+| Time for mul\_cpx: | 7.02799487e-05 |
+| Time for mul\_cpx\_sep: | 9.43747255e-05 |
+| Time for mul\_cpx\_inline: | 7.02518996e-05 |
 
 Here the function in the main file and the one inlined by hand performs equally well.
 We are guessing that the compiler inlines the function from the main file, thus
@@ -67,7 +65,7 @@ The locality subtask is using three different algorithms to compute sums. One al
 
 By running the clock function in C, we get the following results, without using optimization flags:
 
-|Method | Time (s) |
+| Method | Time (s) |
 | ------- | ------- |
 |col_sums | 0.005989 |
 |col_sums2 | 0.003598 |
