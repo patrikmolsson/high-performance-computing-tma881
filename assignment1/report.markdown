@@ -23,6 +23,15 @@ By comparing the assembly code for the optimization flags `-O0`, `-O1`, and `-O2
 ## Locality
 
 ## Indirect addressing
+We choose to implement the latter version of the index vector meaning that the only difference between the algorithms is that the index to sum is obtained from a separate vector rather than the actual loop iterator.
+Timing the summation of two vectors of length N = 1000000 with indirect/direct addressing, compiled with none/full optimisation, yielded the results in the table below:
+
+| Flag	| Indirect	| Direct 	|
+| ----- | ------------- | ------------- |
+| -O0   | 3.591462984 	| 2.395621980	|
+| -O3   | 1.502420311 	| 0.980806824	|
+
+The table shows that the full optimisation can obviously infer some speed-ups to the execution, however the relative difference between the two implementation is roughly the same for the two flags. This indicates that the optimised compiler cannot resolve the issues of the slower implementation. It's reasonable that the indirect scheme is slower since it has to access an extra piece of information from the memory/register, namely the external index vector. This in itself is of course slower but it also introduces an element of uncertainty to the compiler since it cannot know which index that will be read the next time as opposed to having a predictable loop iterator give the index. 
 
 ## Valgrind
 
