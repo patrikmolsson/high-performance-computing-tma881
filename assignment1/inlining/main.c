@@ -77,12 +77,12 @@ for(size_t i = 0; i < reps; ++i){
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
 }
-  return elapsed_seconds;
+  return elapsed_seconds / reps;
 }
 
 int main(){
   size_t length_arr = 30000;
-  const size_t reps = 10000;
+  const size_t reps = 30000;
   int limit = 20;
   double a_re[length_arr];
   double a_im[length_arr];
