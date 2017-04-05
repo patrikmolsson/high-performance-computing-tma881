@@ -5,7 +5,7 @@ CC     = gcc
 
 .PHONY : clean
 
-main : $(OBJS)
+indirect_addressing : $(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(OBJS)
 
 $(OBJS) : $(SOURCE)
