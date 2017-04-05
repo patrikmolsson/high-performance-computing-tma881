@@ -44,24 +44,12 @@ void col_sums2(double * sums, const double ** matrix, size_t nrs, size_t ncs){
   }
 }
 
-int check_col_sums(double * sums, double * sums2, size_t nrs,  double tol){
-  int same = 1;
-  for ( size_t ix=0; ix < nrs; ++ix ){
-    double diff = sums[ix] - sums2[ix];
-    if ( fabs(diff) > tol ){
-      printf("sum %f sum2 %f \n", sums[ix], sums2[ix]);
-      return same = 0;
-    }
-  }
-  return same;
-}
-
 void fill_matrices(double ** matrix, double * sums1, double * sums2, double * sums3, size_t nrs, size_t ncs, size_t limit){
   for ( size_t ix=0; ix < nrs; ++ix ) {
-    sums1[ix] = 0;
-    sums3[ix] = 0;
     sums3[ix] = 0;
     for ( size_t jx=0; jx < ncs; ++jx ){
+      sums1[jx] = 0;
+      sums3[jx] = 0;
       double tmp = rand_lim(limit);
       matrix[ix][jx] = tmp;
     }
@@ -91,9 +79,7 @@ int main(){
   double tol = 0.001;
   size_t reps = 100;
 
-
   // Allocate
-
   matrix = malloc(nrs * sizeof *matrix);
   sums1 = malloc(nrs * sizeof *sums1);
   sums2 = malloc(nrs * sizeof *sums2);
@@ -109,13 +95,9 @@ int main(){
   double time_col_sums2 = benchmark_function(sums2, (const double **)matrix, nrs, ncs, col_sums2, reps);
   double time_row_sums = benchmark_function(sums3, (const double **)matrix, nrs, ncs, row_sums, reps);
 
-  int same = check_col_sums(sums1, sums2, nrs, tol);
-
   printf("colsums time: %.9g colsums2 time: %.9g rowsums time: %.9g \n", time_col_sums, time_col_sums2, time_row_sums);
-  printf("%s %d\n","Are colsum and colsum2 the same?", same);
 
   //Deallocate
-
   for (size_t i = 0; i < nrs; i++){
     free(matrix[i]);
   }
