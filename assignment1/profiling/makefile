@@ -11,10 +11,10 @@ CFLAGSGC = -fprofile-arcs -ftest-coverage
 .PHONY : clean
 
 gprof : $(SOURCE)
-	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGP) && ./main_$@ &> /dev/null && $@ main_$@ gmon.out
+	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGP) && ./main_$@  && $@ main_$@ gmon.out
 
 gcov : $(SOURCE)
-	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGC) && ./main_$@ &> /dev/null && $@ $(SFILE) && less $(SFILE).$@
+	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGC) && ./main_$@  && $@ $(SFILE) && less $(SFILE).$@
 
 clean:
 	@ls | grep -v -E '(makefile)' | xargs rm -f
