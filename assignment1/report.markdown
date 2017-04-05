@@ -111,7 +111,14 @@ By running the clock function in C, we get the following results:
 |col_sums2 | 0.003598 |
 |row_sums | 0.002862 |
 
-When running `gprof` we unfortunately get results that do not make sense, they differ every execution. This is since the execution time for the methods are so small, and that `gprof` only measures in centi-seconds. This could be solved by running the algorithms several times, taking an average of the execution times.
+When running `gprof` we unfortunately got results that did not make sense, they differ every execution. This was since the execution time for the methods were so small, and that `gprof` only measures in centi-seconds. This was solved by running the algorithms 1000 times each, and timing that. The results are presented in the table below. The results are very similar to the times received by the clock function.
+
+
+|Method | Time with gprof (s) |
+| ------- | ------- |
+|col_sums | 6.49 |
+|col_sums2 | 3.00 |
+|row_sums | 2.82 |
 
 When running `gcov` we see that we have the most operations on `col_sums` and `row_sums`, although `row_sums` is the fastest algorithm. This is explained by the reason mentioned earlier, that row elements are stored next to each other in memory, compared to column elements.
 
