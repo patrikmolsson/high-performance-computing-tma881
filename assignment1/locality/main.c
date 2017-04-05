@@ -63,7 +63,7 @@ double benchmark_function(double * sums, const double ** matrix, size_t nrs, siz
 
   for(size_t i = 0; i < reps; ++i){
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    func(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
+    func(sums, matrix, nrs, ncs);
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
   }
