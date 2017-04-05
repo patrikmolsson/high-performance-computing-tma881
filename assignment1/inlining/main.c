@@ -3,7 +3,7 @@
 #include <time.h>
 #include "inliningSep.h"
 
-typedef void (*FUNC_PTR)(double *, double *, double *, double *, double *, double *, int);
+typedef void (*FUNC_PTR)(double *, double *, double *, double *, double *, double *, size_t);
 
 int rand_lim(int limit) {
 /* return a random number between 0 and limit inclusive.
@@ -18,15 +18,15 @@ int rand_lim(int limit) {
   return retval;
 }
 
-void rand_n_nbrs(int * rnd_array, int n, int limit){
-  for (int i = 0; i < n; i++){
+void rand_n_nbrs(int * rnd_array, size_t n, int limit){
+  for (size_t i = 0; i < n; i++){
     rnd_array[i] = rand_lim(limit);
   }
 }
 
-void initialize_arrays(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr, int limit){
-  int n_arrays = 4;
-  for (int i = 0; i < length_arr; i++){
+void initialize_arrays(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr, int limit){
+  size_t n_arrays = 4;
+  for (size_t i = 0; i < length_arr; i++){
     int rnd_array[n_arrays];
     rand_n_nbrs(rnd_array, n_arrays, limit);
     a_re[i] = 0;
@@ -43,35 +43,47 @@ void mul_cpx(double * a_re, double * a_im, double * b_re, double * b_im, double 
   (*a_im) = (*b_im) * (*c_im);
 }
 
-void multiply_arrays(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr){
-  for (int i = 0; i < length_arr; i++){
+void multiply_arrays(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr){
+  for (size_t i = 0; i < length_arr; i++){
     mul_cpx(&a_re[i], &a_im[i], &b_re[i], &b_im[i], &c_re[i], &c_im[i]);
   }
 }
 
-void multiply_arrays_sep(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr){
-  for (int i = 0; i < length_arr; i++){
+void multiply_arrays_sep(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr){
+  for (size_t i = 0; i < length_arr; i++){
     mul_cpx_sep(&a_re[i], &a_im[i], &b_re[i], &b_im[i], &c_re[i], &c_im[i]);
   }
 }
 
-void multiply_arrays_man_inline(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr){
-  for (int i = 0; i < length_arr; i++){
+void multiply_arrays_man_inline(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr){
+  for (size_t i = 0; i < length_arr; i++){
     a_re[i] = b_re[i] * c_re[i];
     a_im[i] = b_im[i] * c_im[i];
   }
 }
 
-double benchmark_funcs(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr, FUNC_PTR func){
-  clock_t begin = clock();
+static double timespec_to_seconds (struct timespec* ts){
+  return (double)ts -> tv_sec + (double)ts -> tv_nsec / 1000000000.0;
+}
+
+double benchmark_function(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr, FUNC_PTR func
+ const size_t reps){
+  struct timespec start;
+  struct timespec end;
+  double elapsed_seconds = 0;
+
+for(size_t i = 0; i < reps; ++i){
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
   func(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
-  clock_t end = clock();
-  double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-  return time_spent;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
+}
+  return elapsed_seconds;
 }
 
 int main(){
-  int length_arr = 30000;
+  size_t length_arr = 30000;
+  size_t reps = 100;
   int limit = 20;
   double a_re[length_arr];
   double a_im[length_arr];
@@ -81,13 +93,13 @@ int main(){
   double c_im[length_arr];
   initialize_arrays(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, limit);
 
-  double time_cpx = benchmark_funcs(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays);
+  double time_cpx = benchmark_function(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays, reps);
   printf("%s %f \n","Time for mul_cpx: \n", time_cpx);
 
-  double time_cpx_sep = benchmark_funcs(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_sep);
+  double time_cpx_sep = benchmark_function(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_sep, reps);
   printf("%s %f \n","Time for mul_cpx_sep: \n", time_cpx_sep);
 
-  double time_man_inline = benchmark_funcs(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_man_inline);
+  double time_man_inline = benchmark_function(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_man_inline, reps);
   printf("%s %f \n","Time for mul_cpx_inline: \n", time_man_inline);
 
   return 0;
