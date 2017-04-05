@@ -19,6 +19,11 @@ typedef void (*FUNC_PTR)( int*, int*, size_t*, size_t, int );
     printf("Current time: %"PRIdMAX".%05ld seconds since the Epoch\n",(intmax_t)s, ms);
 }*/
 
+static double timespec_to_seconds (struct timespec* ts){
+	return (double)ts -> tv_sec + (double)ts -> tv_nsec / 1000000000.0;
+}
+  
+
 void gen_indices(const size_t n, size_t *p ){
     for( size_t ix = 0; ix < n; ++ix ){
         p[ix] = ix;
@@ -47,15 +52,17 @@ void direct_sum( int *y, int *x, size_t *p, const size_t n, const int a ){
 
 double benchmark_function(int *y, int *x, size_t *p, const size_t n, const int a, FUNC_PTR
 func, const size_t reps){
-    double time_tot = 0;
-    clock_t begin, end;
-    for(size_t i = 0; i < reps; ++i){        
-        begin = clock();    
-        func(y, x, p, n, a);    
-        end = clock();
-        time_tot += (end-begin);
-    }
-    return time_tot/CLOCKS_PER_SEC;
+	struct timespec start;
+	struct timespec end;
+	double elapsed_seconds = 0;
+	
+    	for(size_t i = 0; i < reps; ++i){        
+		clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+        	func(y, x, p, n, a);    
+		clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    		elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
+    		}
+	return elapsed_seconds;
 }
 
 int main(){
@@ -73,10 +80,10 @@ int main(){
     init_x(n,x); // Fill the addition vector
     
     double ind_time = benchmark_function(y, x, p, n, a, *indirect_sum, reps);
-    printf("Time indirect sum = %f \n",ind_time);
+    printf("Time indirect sum = %.9f \n",ind_time);
         
     double dir_time = benchmark_function(y, x, p, n, a, *direct_sum, reps);
-    printf("Time direct sum = %f \n",dir_time);
+    printf("Time direct sum = %.9f \n",dir_time);
     
 
     free(p);
