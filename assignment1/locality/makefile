@@ -1,13 +1,13 @@
 SOURCE = main.c
-OBJS = main.o
 CC = gcc
 
-.PHONY : all clean
+.PHONY : locality clean full
 
-main : $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(OBJS)
+locality : $(SOURCE)
+	$(CC) -o $@ $(CFLAGS) $(SOURCE)
 
-$(OBJS) : $(SOURCE)
+locality_full : $(SOURCE)
+	$(CC) -o $@ -O3 $(SOURCE)
 
 clean:
-	rm -f $(OBJS) main
+	rm -f locality locality_full
