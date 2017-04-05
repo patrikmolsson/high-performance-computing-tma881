@@ -38,17 +38,17 @@ void direct_sum( int *y, int *x, size_t *p, const size_t n, const int a ){
 }
 
 double benchmark_function(int *y, int *x, size_t *p, const size_t n, const int a, FUNC_PTR func, const size_t reps){
-struct timespec start;
-struct timespec end;
-double elapsed_seconds = 0;
+  struct timespec start;
+  struct timespec end;
+  double elapsed_seconds = 0;
 
-for(size_t i = 0; i < reps; ++i){
-  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  func(y, x, p, n, a);
-  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-  elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
-}
-return elapsed_seconds;
+  for(size_t i = 0; i < reps; ++i){
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    func(y, x, p, n, a);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
+  }
+  return elapsed_seconds;
 }
 
 int main(){
