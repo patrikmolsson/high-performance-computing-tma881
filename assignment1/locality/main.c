@@ -56,6 +56,10 @@ void fill_matrices(double ** matrix, double * sums1, double * sums2, double * su
   }
 }
 
+static double timespec_to_seconds (struct timespec* ts){
+  return (double)ts -> tv_sec + (double)ts -> tv_nsec / 1000000000.0;
+}
+
 double benchmark_function(double * sums, const double ** matrix, size_t nrs, size_t ncs, FUNC_PTR func, const size_t reps){
   struct timespec start;
   struct timespec end;
