@@ -1,14 +1,13 @@
 #include <stdio.h>
-#include "inliningSep.c"
 #include <stdlib.h>
 #include <time.h>
+#include "inliningSep.h"
 
 typedef void (*FUNC_PTR)(double *, double *, double *, double *, double *, double *, int);
 
 int rand_lim(int limit) {
 /* return a random number between 0 and limit inclusive.
  */
-  // TODO: Eventually add explicit random seed(using time or smth)
   int divisor = RAND_MAX/(limit+1);
   int retval;
 
@@ -30,7 +29,7 @@ void initialize_arrays(double * a_re, double * a_im, double * b_re, double * b_i
   for (int i = 0; i < length_arr; i++){
     int rnd_array[n_arrays];
     rand_n_nbrs(rnd_array, n_arrays, limit);
-    a_re[i] = 0; // Probably not needed since we set the values later
+    a_re[i] = 0;
     a_im[i] = 0;
     b_re[i] = rnd_array[0];
     b_im[i] = rnd_array[1];
@@ -46,9 +45,7 @@ void mul_cpx(double * a_re, double * a_im, double * b_re, double * b_im, double 
 
 void multiply_arrays(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, int length_arr){
   for (int i = 0; i < length_arr; i++){
-    //printf("before: a_re %f a_im %f b_re %f b_im %f c_re %f c_im %f \n", a_re[i], a_im[i], b_re[i], b_im[i], c_re[i], c_im[i]);
     mul_cpx(&a_re[i], &a_im[i], &b_re[i], &b_im[i], &c_re[i], &c_im[i]);
-    //printf("after: a_re %f a_im %f b_re %f b_im %f c_re %f c_im %f \n", a_re[i], a_im[i], b_re[i], b_im[i], c_re[i], c_im[i]);
   }
 }
 
