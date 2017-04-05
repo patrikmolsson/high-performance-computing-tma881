@@ -66,8 +66,7 @@ static double timespec_to_seconds (struct timespec* ts){
   return (double)ts -> tv_sec + (double)ts -> tv_nsec / 1000000000.0;
 }
 
-double benchmark_function(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr, FUNC_PTR func
- const size_t reps){
+double benchmark_function(double * a_re, double * a_im, double * b_re, double * b_im, double * c_re, double * c_im, size_t length_arr, FUNC_PTR func, const size_t reps){
   struct timespec start;
   struct timespec end;
   double elapsed_seconds = 0;
@@ -83,7 +82,7 @@ for(size_t i = 0; i < reps; ++i){
 
 int main(){
   size_t length_arr = 30000;
-  size_t reps = 100;
+  const size_t reps = 100;
   int limit = 20;
   double a_re[length_arr];
   double a_im[length_arr];
@@ -94,13 +93,13 @@ int main(){
   initialize_arrays(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, limit);
 
   double time_cpx = benchmark_function(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays, reps);
-  printf("%s %f \n","Time for mul_cpx: \n", time_cpx);
+  printf("%s %.9g \n","Time for mul_cpx: \n", time_cpx);
 
   double time_cpx_sep = benchmark_function(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_sep, reps);
-  printf("%s %f \n","Time for mul_cpx_sep: \n", time_cpx_sep);
+  printf("%s %.9g \n","Time for mul_cpx_sep: \n", time_cpx_sep);
 
   double time_man_inline = benchmark_function(a_re, a_im, b_re, b_im, c_re, c_im, length_arr, multiply_arrays_man_inline, reps);
-  printf("%s %f \n","Time for mul_cpx_inline: \n", time_man_inline);
+  printf("%s %.9g \n","Time for mul_cpx_inline: \n", time_man_inline);
 
   return 0;
 }
