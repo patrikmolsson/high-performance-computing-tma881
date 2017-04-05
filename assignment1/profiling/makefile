@@ -1,24 +1,21 @@
-SOURCE = main.c
-OBJS = main.o
+SFILE = main.c
+DIR = ../locality/
+
+SOURCE = $(DIR)$(SFILE)
+
 CC = gcc
 CFLAGS = -Wall
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
 
-.PHONY : all clean
+.PHONY : clean
 
-all : main
+gprof : $(SOURCE)
+	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGP) && ./main_$@ &> /dev/null && $@ main_$@ gmon.out
 
-main : $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(OBJS)
-
-$(OBJS) : $(SOURCE)
-
-gprof : $(OBJS)
-	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGP) && ./main_$@ && $@ main_$@ gmon.out
-
-gcov : $(OBJS)
-	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGC) && ./main_$@ && gcov $(SOURCE) && less $(SOURCE).gcov
+gcov : $(SOURCE)
+	$(CC) $(SOURCE) -o main_$@ $(CFLAGS) $(CFLAGSGC) && ./main_$@ &> /dev/null && $@ $(SFILE) && less $(SFILE).$@
 
 clean:
-	@ls | grep -v -E '(makefile|$(SOURCE)|README)' | xargs rm -f && rm -f *.gcov
+	@ls | grep -v -E '(makefile)' | xargs rm -f
+	@rm -f $(OBJS) $(DIR)main

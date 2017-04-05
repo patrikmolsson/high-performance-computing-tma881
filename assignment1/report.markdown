@@ -1,9 +1,9 @@
 # Assignment 1
 
 ## Time
-The time subtask is made up of a program that calculates the sum of the first billion integers, by looping over all the integers. At first the sum was calculated with a more efficient algorithm: `sum = n*(n+1)/2`, although by using this type of algorithm we did not get much difference in timing results depending on the optimization flags, therefore we stuck to the more naive implementation.
+The  subtask is made up of a program that calculates the sum of the first billion integers, by looping over all the integers. At first the sum was calculated with a more efficient algorithm: `sum = n*(n+1)/2`, although by using this type of algorithm we did not get much difference in timing results depending on the optimization flags, therefore we stuck to the more naive implementation.
 
-To time the functions we used bash built-in time function, and ran the program 10 times for each optimization flag. The results are presented in the table below.
+To  the functions we used bash built-in time function, and ran the program 10 times for each optimization flag. The results are presented in the table below.
 
 | Flag    | Time    |
 | ------- | ------- |
@@ -55,6 +55,29 @@ is not able to inline this one in the same way(although it still approx 3 times 
 when comparing to running without optimization flags).
 
 ## Locality
+The locality subtask is using three different algorithms to compute sums. One algorithm to calculate row sums (`row_sums`) and two algorithms to calculate column sums (`col_sums` and `col_sums2`).
+
+By running the clock function in C, we get the following results, without using optimization flags:
+
+|Method | Time (s) |
+| ------- | ------- |
+|col_sums | 0.005989 |
+|col_sums2 | 0.003598 |
+|row_sums | 0.002862 |
+
+When using full optimization (`-O3`) we get these results:
+
+|Method | Time (s) |
+| ------- | ------- |
+|col_sums | 0.002001 |
+|col_sums2 | 0.000574 |
+|row_sums | 0.001479 |
+
+When not optimizing, the `row_sums` is fastest, and `col_sums` slowest. This could be explained by that the row elements in a matrix are stored next to each other in the memory, therefore the algorithm does not need to "jump" as much when accessing the elements to calculate the sum, as in the `col_sums` algorithms.
+
+The improved `col_sums2` algorithm performs better than the `col_sums`, since we do not calculate the column sum before storing it in the results vector, but instead sum directly in the vector, saving some memory and avoiding some statements.
+
+When using full optimization the `col_sums2` is instead the fastest algorithm by far, and the `col_sums` and `row_sums` do not differ as much as before.
 
 ## Indirect addressing
 We choose to implement the latter version of the index vector meaning that the only difference between the algorithms is that the index to sum is obtained from a separate vector rather than the actual loop iterator.
@@ -70,5 +93,18 @@ The table shows that the full optimisation can obviously infer some speed-ups to
 ## Valgrind
 
 ## Profiling
+The profiling subtask is using three different algorithms implemented earlier in locality. One algorithm to calculate row sums (`row_sums`) and two algorithms to calculate column sums (`col_sums` and `col_sums2`).
 
+By running the clock function in C, we get the following results:
 
+|Method | Time (s) |
+| ------- | ------- |
+|col_sums | 0.005989 |
+|col_sums2 | 0.003598 |
+|row_sums | 0.002862 |
+
+When running `gprof` we unfortunately get results that do not make sense, they differ every execution. This is since the execution time for the methods are so small, and that `gprof` only measures in centi-seconds. This could be solved by running the algorithms several times, taking an average of the execution times.
+
+When running `gcov` we see that we have the most operations on `col_sums` and `row_sums`, although `row_sums` is the fastest algorithm. This is explained by the reason mentioned earlier, that row elements are stored next to each other in memory, compared to column elements.
+
+The `col_sums2` performs better than the `col_sums` as explained previously.
