@@ -20,6 +20,40 @@ By comparing the assembly code for the optimization flags `-O0`, `-O1`, and `-O2
 
 ## Inlining
 
+Running 30000 runs(on ozzy) and using CLOCK\_MONOTONIC\_RAW from clock\_gettime without
+optimization flags yields following averaged time:
+
+Time for mul\_cpx:
+ 0.000264060342
+Time for mul\_cpx\_sep:
+ 0.000279030213
+Time for mul\_cpx\_inline:
+ 0.000157592956
+
+The version included in a separate file had a slightly longer running time than the
+function in the main file. Our guess is that there is some overhead when acessing
+functions in different files, thus causing the increased running time.
+
+The function inlined by hand was the fastest, this is because
+the program skips the function overhead(i.e. no need for call or return sequences).
+
+When running with optimization flag -O3 the yields averaged running times
+
+Time for mul\_cpx:
+ 7.02799487e-05
+Time for mul\_cpx\_sep:
+ 9.43747255e-05
+Time for mul\_cpx\_inline:
+ 7.02518996e-05
+
+Here the function in the main file and the one inlined by hand performs equally well.
+We are guessing that the compiler inlines the function from the main file, thus
+it would become equal to the one inlined by hand.
+
+The one in the seperate file still suffers worse performance, it seems as if the compiler
+is not able to inline this one in the same way(although it still approx 3 times faster
+when comparing to running without optimization flags).
+
 ## Locality
 
 ## Indirect addressing
