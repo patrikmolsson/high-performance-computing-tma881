@@ -56,6 +56,10 @@ void fill_matrices(double ** matrix, double * sums1, double * sums2, double * su
   }
 }
 
+static double timespec_to_seconds (struct timespec* ts){
+  return (double)ts -> tv_sec + (double)ts -> tv_nsec / 1000000000.0;
+}
+
 double benchmark_function(double * sums, const double ** matrix, size_t nrs, size_t ncs, FUNC_PTR func, const size_t reps){
   struct timespec start;
   struct timespec end;
@@ -63,7 +67,7 @@ double benchmark_function(double * sums, const double ** matrix, size_t nrs, siz
 
   for(size_t i = 0; i < reps; ++i){
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    func(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
+    func(sums, matrix, nrs, ncs);
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
   }
@@ -76,8 +80,7 @@ int main(){
   double *sums1;
   double *sums2;
   double *sums3;
-  double tol = 0.001;
-  size_t reps = 100;
+  size_t reps = 1000;
 
   // Allocate
   matrix = malloc(nrs * sizeof *matrix);

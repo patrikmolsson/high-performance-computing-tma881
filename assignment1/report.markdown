@@ -1,6 +1,14 @@
-# Assignment 1
+---
+title: Assignment 1
+author:
+ - Michaela Fritiofsson
+ - Jakob Lindqvist
+ - Per Nilsson Lundberg
+ - Patrik Olsson
+date: April 6th 2017
+---
 
-## Time
+# Time
 The  subtask is made up of a program that calculates the sum of the first billion integers, by looping over all the integers. At first the sum was calculated with a more efficient algorithm: `sum = n*(n+1)/2`, although by using this type of algorithm we did not get much difference in timing results depending on the optimization flags, therefore we stuck to the more naive implementation.
 
 To  the functions we used bash built-in time function, and ran the program 10 times for each optimization flag. The results are presented in the table below.
@@ -18,7 +26,7 @@ We see that with optimization flag `-O0` we got the worst results, and with opti
 
 By comparing the assembly code for the optimization flags `-O0`, `-O1`, and `-O2`, we see that in `-O0` the sum is not calculated by the compiler, and the for-loop is still present. With the optimization flag `-O1` we find the calculated sum in the assembly code, but the upper limit of the loop is still present, which hints that the loop is still running. In the `-O2` assembly code we do not find any trails of the loop, and only the final sum. This indicates that there is no loop present at all, hence the good results.
 
-## Inlining
+# Inlining
 
 Running 30000 runs(on ozzy) and using CLOCK\_MONOTONIC\_RAW from clock\_gettime without
 optimization flags yields following averaged time:
@@ -54,7 +62,7 @@ The one in the seperate file still suffers worse performance, it seems as if the
 is not able to inline this one in the same way(although it still approx 3 times faster
 when comparing to running without optimization flags).
 
-## Locality
+# Locality
 The locality subtask is using three different algorithms to compute sums. One algorithm to calculate row sums (`row_sums`) and two algorithms to calculate column sums (`col_sums` and `col_sums2`).
 
 By running the clock function in C, we get the following results, without using optimization flags:
@@ -79,7 +87,7 @@ The improved `col_sums2` algorithm performs better than the `col_sums`, since we
 
 When using full optimization the `col_sums2` is instead the fastest algorithm by far, and the `col_sums` and `row_sums` do not differ as much as before.
 
-## Indirect addressing
+# Indirect addressing
 We choose to implement the latter version of the index vector meaning that the only difference between the algorithms is that the index to sum is obtained from a separate vector rather than the actual loop iterator.
 Timing the summation of two vectors of length N = 1000000 with indirect/direct addressing, compiled with none/full optimisation, yielded the results in the table below (average over 1000 runs):
 
@@ -90,7 +98,7 @@ Timing the summation of two vectors of length N = 1000000 with indirect/direct a
 
 The table shows that the full optimisation can obviously infer some speed-ups to the execution, however the relative difference between the two implementation is roughly the same for the two flags. This indicates that the optimised compiler cannot resolve the issues of the slower implementation. It's reasonable that the indirect scheme is slower since it has to access an extra piece of information from the memory/register, namely the external index vector. This in itself is of course slower but it also introduces an element of uncertainty to the compiler since it cannot know which index that will be read the next time as opposed to having a predictable loop iterator give the index. 
 
-## Valgrind
+# Valgrind
 Running valgrind for the executable leak produces the following output:
 
 ==10061== HEAP SUMMARY:
@@ -107,8 +115,7 @@ Running valgrind for the executable leak produces the following output:
 
 Without freeing the allocated memory some of it is still in use att exit. The size of it confirms that the allocated ints are the cause of this; 4000 bytes in 1 block corresponds to the 1000 ints allocated since each integer requires 4 bytes. Altering the program so that it frees the memory makes this memory leak go away.
 
-
-## Profiling
+# Profiling
 The profiling subtask is using three different algorithms implemented earlier in locality. One algorithm to calculate row sums (`row_sums`) and two algorithms to calculate column sums (`col_sums` and `col_sums2`).
 
 By running the clock function in C, we get the following results:
@@ -119,7 +126,14 @@ By running the clock function in C, we get the following results:
 |col_sums2 | 0.003598 |
 |row_sums | 0.002862 |
 
-When running `gprof` we unfortunately get results that do not make sense, they differ every execution. This is since the execution time for the methods are so small, and that `gprof` only measures in centi-seconds. This could be solved by running the algorithms several times, taking an average of the execution times.
+When running `gprof` we unfortunately got results that did not make sense, they differ every execution. This was since the execution time for the methods were so small, and that `gprof` only measures in centi-seconds. This was solved by running the algorithms 1000 times each, and timing that. The results are presented in the table below. The results are very similar to the times received by the clock function.
+
+
+|Method | Time with gprof (s) |
+| ------- | ------- |
+|col_sums | 6.49 |
+|col_sums2 | 3.00 |
+|row_sums | 2.82 |
 
 When running `gcov` we see that we have the most operations on `col_sums` and `row_sums`, although `row_sums` is the fastest algorithm. This is explained by the reason mentioned earlier, that row elements are stored next to each other in memory, compared to column elements.
 
