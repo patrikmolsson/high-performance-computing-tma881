@@ -81,16 +81,32 @@ When using full optimization the `col_sums2` is instead the fastest algorithm by
 
 ## Indirect addressing
 We choose to implement the latter version of the index vector meaning that the only difference between the algorithms is that the index to sum is obtained from a separate vector rather than the actual loop iterator.
-Timing the summation of two vectors of length N = 1000000 with indirect/direct addressing, compiled with none/full optimisation, yielded the results in the table below:
+Timing the summation of two vectors of length N = 1000000 with indirect/direct addressing, compiled with none/full optimisation, yielded the results in the table below (average over 1000 runs):
 
-| Flag	| Indirect	| Direct 	|
-| ----- | ------------- | ------------- |
-| -O0   | 3.591462984 	| 2.395621980	|
-| -O3   | 1.502420311 	| 0.980806824	|
+| Flag	| Indirect		| Direct 		|
+| ----- | ---------------------	| ---------------------	|
+| -O0   | 0.003591462984 	| 0.002395621980	|
+| -O3   | 0.001502420311 	| 0.000980806824	|
 
 The table shows that the full optimisation can obviously infer some speed-ups to the execution, however the relative difference between the two implementation is roughly the same for the two flags. This indicates that the optimised compiler cannot resolve the issues of the slower implementation. It's reasonable that the indirect scheme is slower since it has to access an extra piece of information from the memory/register, namely the external index vector. This in itself is of course slower but it also introduces an element of uncertainty to the compiler since it cannot know which index that will be read the next time as opposed to having a predictable loop iterator give the index. 
 
 ## Valgrind
+Running valgrind for the executable leak produces the following output:
+
+==10061== HEAP SUMMARY:
+==10061==     in use at exit: 4,000 bytes in 1 blocks
+==10061==   total heap usage: 1 allocs, 0 frees, 4,000 bytes allocated
+==10061==
+==10061== LEAK SUMMARY:
+==10061==    definitely lost: 4,000 bytes in 1 blocks
+==10061==    indirectly lost: 0 bytes in 0 blocks
+==10061==      possibly lost: 0 bytes in 0 blocks
+==10061==    still reachable: 0 bytes in 0 blocks
+==10061==         suppressed: 0 bytes in 0 blocks
+==10061== Rerun with --leak-check=full to see details of leaked memory
+
+Without freeing the allocated memory some of it is still in use att exit. The size of it confirms that the allocated ints are the cause of this; 4000 bytes in 1 block corresponds to the 1000 ints allocated since each integer requires 4 bytes. Altering the program so that it frees the memory makes this memory leak go away.
+
 
 ## Profiling
 The profiling subtask is using three different algorithms implemented earlier in locality. One algorithm to calculate row sums (`row_sums`) and two algorithms to calculate column sums (`col_sums` and `col_sums2`).

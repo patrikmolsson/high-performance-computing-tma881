@@ -4,9 +4,9 @@ CC = gcc
 
 .PHONY : all clean check
 
-all : main
+all : leak
 
-main : $(OBJS)
+leak : $(OBJS)
 	$(CC) -o $@ $(OBJS)
 
 $(OBJS) : $(SOURCE)
