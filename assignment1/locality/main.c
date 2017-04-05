@@ -80,8 +80,7 @@ int main(){
   double *sums1;
   double *sums2;
   double *sums3;
-  double tol = 0.001;
-  size_t reps = 100;
+  size_t reps = 1000;
 
   // Allocate
   matrix = malloc(nrs * sizeof *matrix);
