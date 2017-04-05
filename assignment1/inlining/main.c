@@ -71,13 +71,13 @@ double benchmark_function(double * a_re, double * a_im, double * b_re, double * 
   struct timespec end;
   double elapsed_seconds = 0;
 
-for(size_t i = 0; i < reps; ++i){
-  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  func(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
-  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-  elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
-}
-  return elapsed_seconds / reps;
+  for(size_t i = 0; i < reps; ++i){
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    func(a_re, a_im, b_re, b_im, c_re, c_im, length_arr);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    elapsed_seconds += timespec_to_seconds(&end) - timespec_to_seconds(&start);
+  }
+    return elapsed_seconds / reps;
 }
 
 int main(){
