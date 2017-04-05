@@ -1,11 +1,12 @@
 SOURCE = main.c inliningSep.c
 OBJS = main.o inliningSep.o
 CC     = gcc
+OPTIMFLAG = -O3
 
 .PHONY : clean
 
-main : $(SOURCE)
-	$(CC) $(SOURCE) -o $@ $(CFLAGS)
+inlining : $(SOURCE)
+	$(CC) $(SOURCE) -o $@ $(CFLAGS) $(OPTIMFLAG)
 
 clean:
-	rm -f $(OBJS) main
+	rm -f $(OBJS) inlining
