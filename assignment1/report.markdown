@@ -22,7 +22,7 @@ To  the functions we used bash built-in time function, and ran the program 10 ti
 | -Os     | 0.005s  |
 | -Og     | 3.038s  |
 
-We see that with optimization flag `-O0` we got the worst results, and with optimization flags `-O2`, `-O3` and `-Os` the by far best results. 
+We see that with optimization flag `-O0` we got the worst results, and with optimization flags `-O2`, `-O3` and `-Os` the by far best results.
 
 By comparing the assembly code for the optimization flags `-O0`, `-O1`, and `-O2`, we see that in `-O0` the sum is not calculated by the compiler, and the for-loop is still present. With the optimization flag `-O1` we find the calculated sum in the assembly code, but the upper limit of the loop is still present, which hints that the loop is still running. In the `-O2` assembly code we do not find any trails of the loop, and only the final sum. This indicates that there is no loop present at all, hence the good results.
 
@@ -33,18 +33,19 @@ optimization flags yields following averaged time:
 
 | Method | Time |
 | ------ | ---- |
-| Time for mul\_cpx: | 7.02799487e-05 |
-| Time for mul\_cpx\_sep: | 9.43747255e-05 |
-| Time for mul\_cpx\_inline: | 7.02518996e-05 |
+| Time for mul\_cpx: | 0.00024145336 |
+| Time for mul\_cpx\_sep: | 0.000238245753 |
+| Time for mul\_cpx\_inline: | 0.000136710719 |
 
-The version included in a separate file had a slightly longer running time than the
-function in the main file. Our guess is that there is some overhead when acessing
-functions in different files, thus causing the increased running time.
+The version included in a separate file had approximately the same running time as the
+function in the main file. We found this a little surprising, one thought was that
+there would be some overhead when reading from a seperate file.
 
 The function inlined by hand was the fastest, this is because
 the program skips the function overhead(i.e. no need for call or return sequences).
 
 When running with optimization flag -O3 this yields averaged running times
+
 | Method | Time |
 | ------ | ---- |
 | Time for mul\_cpx: | 7.02799487e-05 |
@@ -55,7 +56,7 @@ Here the function in the main file and the one inlined by hand performs equally 
 We are guessing that the compiler inlines the function from the main file, thus
 it would become equal to the one inlined by hand.
 
-The one in the seperate file still suffers worse performance, it seems as if the compiler
+The one in the seperate file suffers worse performance, it seems as if the compiler
 is not able to inline this one in the same way(although it still approx 3 times faster
 when comparing to running without optimization flags).
 
@@ -93,7 +94,7 @@ Timing the summation of two vectors of length N = 1000000 with indirect/direct a
 | -O0   | 0.003591462984 	| 0.002395621980	|
 | -O3   | 0.001502420311 	| 0.000980806824	|
 
-The table shows that the full optimisation can obviously infer some speed-ups to the execution, however the relative difference between the two implementation is roughly the same for the two flags. This indicates that the optimised compiler cannot resolve the issues of the slower implementation. It's reasonable that the indirect scheme is slower since it has to access an extra piece of information from the memory/register, namely the external index vector. This in itself is of course slower but it also introduces an element of uncertainty to the compiler since it cannot know which index that will be read the next time as opposed to having a predictable loop iterator give the index. 
+The table shows that the full optimisation can obviously infer some speed-ups to the execution, however the relative difference between the two implementation is roughly the same for the two flags. This indicates that the optimised compiler cannot resolve the issues of the slower implementation. It's reasonable that the indirect scheme is slower since it has to access an extra piece of information from the memory/register, namely the external index vector. This in itself is of course slower but it also introduces an element of uncertainty to the compiler since it cannot know which index that will be read the next time as opposed to having a predictable loop iterator give the index.
 
 # Valgrind
 Running valgrind for the executable leak produces the following output:
