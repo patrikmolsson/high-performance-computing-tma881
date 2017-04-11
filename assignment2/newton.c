@@ -52,13 +52,19 @@ void * newton_method(void * pv){
   complex double true_root[d];
   find_true_roots(d, true_root);
   size_t iter = 0;
+  int bool = 0;
+  if(creal(x_0) == -2 && cimag(x_0) == 2){
+  	bool = 1;
+  }
 
   while(conv == -1 && cabs(x_0) > TOL_CONV && creal(x_0) < TOL_DIV && cimag(x_0 ) < TOL_DIV && iter < MAX_ITER ){
     x_1 = newton_iterate(x_0, d);
     for(size_t i=0; i<d;i++){
       if (cabs(x_1-true_root[i]) < TOL_CONV){
-        //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]));
         conv = i;
+        if(bool == 1){
+        	printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
+        }
       }
     }
     x_0 = x_1;
@@ -99,6 +105,9 @@ void write_ppm(newton_res **sols, size_t grid_size){
     memset(for_print, 0, sizeof(for_print));
     for (size_t j = 0; j < grid_size; j++){
       type_of_conv = sols[i][j].type_conv;
+      if (i == 0 && j == 0){
+      	printf("type of conv %d \n",type_of_conv);
+      }
       if(type_of_conv == 0){
         strcat(for_print, "1 0 0 ");
       } else if(type_of_conv == 1){
@@ -114,7 +123,7 @@ void write_ppm(newton_res **sols, size_t grid_size){
 }
 
 int main(int argc, char *argv[]){
-  size_t grid_size = 100, interval = 2, d = 3, num_threads = 4; //Default values
+  size_t grid_size = 200, interval = 2, d = 3, num_threads = 4; //Default values
   double complex ** grid;
   newton_res ** sols;
   char arg[10];
@@ -153,19 +162,19 @@ int main(int argc, char *argv[]){
   pthread_t threads[num_threads];
   int rc;
   int t = 0;
-  struct newton_method_args *args;
-  args->d = d;
+  struct newton_method_args args[grid_size][grid_size];
 
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
+    	args[i][j].d = d;
       if (t % (num_threads) == 0)
         t = 0;
 
-      args->result = &sols[i][j];
-      args->x_init = grid[i][j];
-      args->tid = (long)t;
+      args[i][j].result = &sols[i][j];
+      args[i][j].x_init = grid[i][j];
+      args[i][j].tid = (long)t;
 
-      rc = pthread_create(&threads[t], NULL, newton_method, (void *)args);
+      rc = pthread_create(&threads[t], NULL, newton_method, &args[i][j]);
       if(rc) {
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return 1;
