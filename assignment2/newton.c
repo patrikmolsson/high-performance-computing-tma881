@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <complex.h>
+#include <ctype.h>
 #include <math.h>
 #include <string.h>
 
@@ -73,13 +74,13 @@ void fill_grid(double complex ** grid, size_t grid_size, size_t interval){
 void write_ppm(newton_res **sols, size_t grid_size){
   FILE *fp;
   fp = fopen("test.ppm", "w+");
-  char for_print[6*grid_size]; //Fixme: Need to fix this, change grid_size to global const?
+  char for_print[6*grid_size + 1];
   int type_of_conv;
   fprintf(fp, "P3\n");
   fprintf(fp, "%ld %ld\n", grid_size, grid_size);
   fprintf(fp, "%d\n", 1);
   for (size_t i = 0; i < grid_size; i++){
-    strcpy(for_print, "");
+    memset(for_print, 0, sizeof(for_print));
     for (size_t j = 0; j < grid_size; j++){
       type_of_conv = sols[i][j].type_conv;
       if(type_of_conv == 0){
@@ -97,11 +98,32 @@ void write_ppm(newton_res **sols, size_t grid_size){
 }
 
 int main(int argc, char *argv[]){
-
-  size_t grid_size = 1000, interval = 2, d = 3;
+  size_t grid_size = 1000, interval = 2, d = 3, threads = 4; //Default values
   double complex ** grid;
-  newton_res test;
   newton_res ** sols;
+  char arg[10];
+
+  if (argc > 4)
+    printf("Too many arguments\n");
+
+  for (size_t i = 1; i < argc; i++) {
+    if (argv[i][0] == '-') {
+      memset(arg, 0, sizeof(arg));
+      memcpy(arg, &argv[i][2], strlen(argv[i]) - 2);
+      if (argv[i][1] == 'l') {
+        // Grid size
+        grid_size = (int) strtol(arg, NULL, 10);
+      } else if (argv[i][1] == 't') {
+        // Threads
+        threads = (int) strtol(arg, NULL, 10);
+      }
+    }
+    else if (isdigit(argv[i][0])) {
+      // Digit => degrees
+      d = (int) strtol(argv[i], NULL, 10);
+    }
+  }
+
   grid = malloc(grid_size * sizeof *grid);
   sols = malloc(grid_size * sizeof *sols);
 
