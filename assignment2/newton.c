@@ -3,7 +3,6 @@
 #include <complex.h>
 #include <ctype.h>
 #include <math.h>
-#include <pthread.h>
 #include <string.h>
 
 typedef struct{
@@ -11,13 +10,6 @@ typedef struct{
   int iter_conv;
   int type_conv;
 } newton_res;
-
-struct newton_method_args{
-  newton_res result;
-  complex double x_init;
-  size_t d;
-  long tid;
-};
 
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
@@ -40,13 +32,9 @@ void find_true_roots(size_t d, complex double *true_root){
 }
 
 
-void * newton_method(void * pv){
-  //newton_res *result, const complex double x_init, const size_t d
-  struct newton_method_args *args = pv;
-  size_t d = args->d;
-
+void newton_method(newton_res *result, const complex double x_init, const size_t d){
   int conv = -1;
-  complex double x_0 = args->x_init;
+  complex double x_0 = x_init;
   complex double x_1;
   complex double true_root[d];
   find_true_roots(d, true_root);
@@ -65,9 +53,9 @@ void * newton_method(void * pv){
   }
   //result->root = x_1;
   //result->iter_conv = iter;
-  (args->result).root = x_1;
-  (args->result).iter_conv = iter;
-  (args->result).type_conv = conv;
+  (*result).root = x_1;
+  (*result).iter_conv = iter;
+  (*result).type_conv = conv;
 }
 
 void fill_grid(double complex ** grid, size_t grid_size, size_t interval){
@@ -110,7 +98,7 @@ void write_ppm(newton_res **sols, size_t grid_size){
 }
 
 int main(int argc, char *argv[]){
-  size_t grid_size = 1000, interval = 2, d = 3, num_threads = 4; //Default values
+  size_t grid_size = 1000, interval = 2, d = 3, threads = 4; //Default values
   double complex ** grid;
   newton_res ** sols;
   char arg[10];
@@ -127,7 +115,7 @@ int main(int argc, char *argv[]){
         grid_size = (int) strtol(arg, NULL, 10);
       } else if (argv[i][1] == 't') {
         // Threads
-        num_threads = (int) strtol(arg, NULL, 10);
+        threads = (int) strtol(arg, NULL, 10);
       }
     }
     else if (isdigit(argv[i][0])) {
@@ -146,29 +134,12 @@ int main(int argc, char *argv[]){
 
   fill_grid(grid, grid_size, interval);
 
-  pthread_t threads[num_threads];
-  int rc;
-  int t = 0;
-  struct newton_method_args *args;
-  args->d = d;
-
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
-      if (t % (num_threads) == 0)
-        t = 0;
-
-      args->result = sols[i][j];
-      args->x_init = grid[i][j];
-      args->tid = (long)t;
-
-      rc = pthread_create(&threads[t], NULL, newton_method, (void *) args);
-
-      printf("rc %i", rc);
-
-      t++;
+      newton_method(&sols[i][j], grid[i][j], d);
+      //printf("re %f im %f \n", creal(sols[i][j].root), cimag(sols[i][j].root));
     }
   }
-
 
   write_ppm(sols, grid_size);
 
