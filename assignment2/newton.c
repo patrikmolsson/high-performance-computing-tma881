@@ -3,9 +3,9 @@
 #include <complex.h>
 #include <ctype.h>
 #include <math.h>
-#include <pthread.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 
 typedef struct{
   double complex root;
@@ -42,11 +42,9 @@ void find_true_roots(size_t d, complex double *true_root){
 
 
 void * newton_method(void * pv){
-  //newton_res *result, const complex double x_init, const size_t d
   struct newton_method_args *args = pv;
-  size_t d = args->d;
-
   int conv = -1;
+  size_t d = args->d;
   complex double x_0 = args->x_init;
   complex double x_1;
   complex double true_root[d];
@@ -70,13 +68,10 @@ void * newton_method(void * pv){
     x_0 = x_1;
     iter++;
   }
-  //result->root = x_1;
-  //result->iter_conv = iter;
   newton_res *tmp = args->result;
   tmp->root = x_1;
   tmp->iter_conv = iter;
   tmp->type_conv = conv;
-  pthread_exit(NULL);
   return NULL;
 }
 
@@ -93,7 +88,23 @@ void fill_grid(double complex ** grid, size_t grid_size, size_t interval){
   }
 }
 
-void write_ppm(newton_res **sols, size_t grid_size){
+
+void root_color_map(char **colormap, size_t d){
+  int k;
+  for(int i=0; i<d; i++){
+    for (int c = 2; c >= 0; c--){
+    k = i >> c;
+    if (k & 1){
+      strcat( colormap[i], "1 " );
+    }
+    else
+      strcat( colormap[i], "0 ");
+    }
+    //printf("Color: %s \n", colormap[i] );
+  }
+}
+
+void write_ppm(newton_res **sols, size_t grid_size, char **colormap, size_t d){
   FILE *fp;
   fp = fopen("test.ppm", "w+");
   char for_print[6*grid_size + 1];
@@ -105,15 +116,11 @@ void write_ppm(newton_res **sols, size_t grid_size){
     memset(for_print, 0, sizeof(for_print));
     for (size_t j = 0; j < grid_size; j++){
       type_of_conv = sols[i][j].type_conv;
-      if (i == 0 && j == 0){
-      	printf("type of conv %d \n",type_of_conv);
+      if(type_of_conv >= 0 && type_of_conv <= d-1){
+        strcat(for_print, colormap[type_of_conv]);
       }
-      if(type_of_conv == 0){
-        strcat(for_print, "1 0 0 ");
-      } else if(type_of_conv == 1){
-        strcat(for_print, "0 1 0 ");
-      } else if(type_of_conv == 2){
-        strcat(for_print, "0 0 1 ");
+      else{
+        strcat(for_print, "1 1 1 ");
       }
     }
     strcat(for_print, "\n");
@@ -151,7 +158,14 @@ int main(int argc, char *argv[]){
 
   grid = malloc(grid_size * sizeof *grid);
   sols = malloc(grid_size * sizeof *sols);
-
+  // COLOR MAP INIT
+  const size_t str_length = 6;
+  char ** colormap;
+  colormap = malloc(d * sizeof *colormap);
+  for(int i = 0; i < d; i++ ){
+    colormap[i] = malloc( ( str_length + 1 ) );
+  }
+  root_color_map(colormap, d);
   for (size_t i=0; i < grid_size; i++){
     grid[i] = malloc(grid_size * sizeof *grid[i]);
     sols[i] = malloc(grid_size * sizeof *sols[i]);
@@ -189,8 +203,7 @@ int main(int argc, char *argv[]){
     	fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
 
-
-  write_ppm(sols, grid_size);
+  write_ppm(sols, grid_size, colormap, d);
 
   for (size_t i = 0; i < grid_size; i++){
     free(grid[i]);
@@ -199,7 +212,11 @@ int main(int argc, char *argv[]){
 
   free(grid);
   free(sols);
-  pthread_exit(NULL);
+  for(int i = 0; i < d; i++ ){
+    free(colormap[i]);
+  }
+  free(colormap);
+  //pthread_exit(NULL);
   return 0;
 }
 
