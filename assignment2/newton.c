@@ -5,6 +5,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
+#include <assert.h>
 
 typedef struct{
   double complex root;
@@ -13,7 +14,7 @@ typedef struct{
 } newton_res;
 
 struct newton_method_args{
-  newton_res result;
+  newton_res *result;
   complex double x_init;
   size_t d;
   long tid;
@@ -65,9 +66,12 @@ void * newton_method(void * pv){
   }
   //result->root = x_1;
   //result->iter_conv = iter;
-  (args->result).root = x_1;
-  (args->result).iter_conv = iter;
-  (args->result).type_conv = conv;
+  newton_res *tmp = args->result;
+  tmp->root = x_1;
+  tmp->iter_conv = iter;
+  tmp->type_conv = conv;
+  pthread_exit(NULL);
+  return NULL;
 }
 
 void fill_grid(double complex ** grid, size_t grid_size, size_t interval){
@@ -110,7 +114,7 @@ void write_ppm(newton_res **sols, size_t grid_size){
 }
 
 int main(int argc, char *argv[]){
-  size_t grid_size = 1000, interval = 2, d = 3, num_threads = 4; //Default values
+  size_t grid_size = 100, interval = 2, d = 3, num_threads = 4; //Default values
   double complex ** grid;
   newton_res ** sols;
   char arg[10];
@@ -157,16 +161,23 @@ int main(int argc, char *argv[]){
       if (t % (num_threads) == 0)
         t = 0;
 
-      args->result = sols[i][j];
+      args->result = &sols[i][j];
       args->x_init = grid[i][j];
       args->tid = (long)t;
 
-      rc = pthread_create(&threads[t], NULL, newton_method, (void *) args);
-
-      printf("rc %i", rc);
+      rc = pthread_create(&threads[t], NULL, newton_method, (void *)args);
+      if(rc) {
+        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+        return 1;
+      }
 
       t++;
     }
+  }
+  for (int i = 0; i < num_threads; ++i) {
+    rc = pthread_join(threads[i], NULL);
+    if(rc)
+    	fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
 
 
@@ -179,7 +190,7 @@ int main(int argc, char *argv[]){
 
   free(grid);
   free(sols);
-
+  pthread_exit(NULL);
   return 0;
 }
 
