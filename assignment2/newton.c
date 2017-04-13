@@ -104,9 +104,12 @@ void root_color_map(char **colormap, size_t d){
   }
 }
 
-void write_ppm(newton_res **sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_attractors(newton_res **sols, size_t grid_size, char **colormap, size_t d){
+  char str[25];
+  sprintf(str, "newton_attractors_x%i.ppm \n", (int)d);//printf("%s \n",str);
+  printf("%s",str);
   FILE *fp;
-  fp = fopen("test.ppm", "w+");
+  fp = fopen(str, "w+");
   char for_print[6*grid_size + 1];
   int type_of_conv;
   fprintf(fp, "P3\n");
@@ -128,6 +131,36 @@ void write_ppm(newton_res **sols, size_t grid_size, char **colormap, size_t d){
   }
   fclose(fp);
 }
+
+void write_ppm_convergence(newton_res **sols, size_t grid_size, char **colormap, size_t d){
+  char str[26];
+  sprintf(str, "newton_convergence_x%i.ppm \n", (int)d);//printf("%s \n",str);
+  printf("%s",str);
+
+  FILE *fp;
+  fp = fopen(str, "w+");
+  char for_print[6*grid_size + 1];
+  int type_of_conv;
+  fprintf(fp, "P3\n");
+  fprintf(fp, "%ld %ld\n", grid_size, grid_size);
+  fprintf(fp, "%d\n", 1);
+  for (size_t i = 0; i < grid_size; i++){
+    memset(for_print, 0, sizeof(for_print));
+    for (size_t j = 0; j < grid_size; j++){
+      type_of_conv = sols[i][j].type_conv;
+      if(type_of_conv >= 0 && type_of_conv <= d-1){
+        strcat(for_print, colormap[type_of_conv]);
+      }
+      else{
+        strcat(for_print, "1 1 1 ");
+      }
+    }
+    strcat(for_print, "\n");
+    fprintf(fp, "%s", for_print);
+  }
+  fclose(fp);
+}
+
 
 int main(int argc, char *argv[]){
   size_t grid_size = 200, interval = 2, d = 3, num_threads = 4; //Default values
@@ -203,7 +236,8 @@ int main(int argc, char *argv[]){
     	fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
 
-  write_ppm(sols, grid_size, colormap, d);
+  write_ppm_attractors(sols, grid_size, colormap, d);
+  write_ppm_convergence(sols, grid_size, colormap, d);
 
   for (size_t i = 0; i < grid_size; i++){
     free(grid[i]);
