@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
-
+// TODO: root not needed?
 typedef struct{
   double complex root;
   int iter_conv;
@@ -14,10 +14,18 @@ typedef struct{
 } newton_res;
 
 struct newton_method_args{
-  newton_res *result;
+  /*newton_res *result;
   complex double x_init;
   size_t d;
+  long tid;*/
+  
+  size_t d;
+  newton_res *result;
+  complex double *grid;
   long tid;
+  size_t grid_size;
+  size_t block_size;
+  
 };
 
 static const double TOL_CONV = 1e-3;
@@ -45,39 +53,53 @@ void * newton_method(void * pv){
   //newton_res *result, const complex double x_init, const size_t d
   struct newton_method_args *args = pv;
   size_t d = args->d;
-
-  int conv = -1;
-  complex double x_0 = args->x_init;
-  complex double x_1;
+  size_t block_size = args->block_size;
+  size_t grid_size = args ->grid_size; 
   complex double true_root[d];
   find_true_roots(d, true_root);
-  size_t iter = 0;
-  int bool = 0;
-  if(creal(x_0) == -2 && cimag(x_0) == 2){
-  	bool = 1;
-  }
+  complex double *grid = args->grid;
+  newton_res *sols = args->result;
+  free(args);
 
-  while(conv == -1 && cabs(x_0) > TOL_CONV && creal(x_0) < TOL_DIV && cimag(x_0 ) < TOL_DIV && iter < MAX_ITER ){
-    x_1 = newton_iterate(x_0, d);
-    for(size_t i=0; i<d;i++){
-      if (cabs(x_1-true_root[i]) < TOL_CONV){
-        conv = i;
-        if(bool == 1){
-        	printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
-        }
+  complex double x_0, x_1;
+  for(size_t i = 0; i<block_size; i++){
+    for(size_t j = 0; j<grid_size; j++){ 
+      x_0 = grid[i][j];
+      int conv = -1;
+      size_t iter = 0;
+      int bool = 0;
+      
+      if(creal(x_0) == -2 && cimag(x_0) == 2){
+      	bool = 1;
       }
+      // TODO: Convergence: if abs(x_1) != 1 + eps, keep iterate.
+      // Root check: start by checking real values <= always conjugate
+      while(conv == -1 && cabs(x_0) > TOL_CONV && creal(x_0) < TOL_DIV && cimag(x_0 ) < TOL_DIV && iter < MAX_ITER ){
+        x_1 = newton_iterate(x_0, d);
+        for(size_t i=0; i<d;i++){
+          if (cabs(x_1-true_root[i]) < TOL_CONV){
+            conv = i;
+            if(bool == 1){
+            	printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
+            }
+          }
+        }
+        x_0 = x_1;
+        iter++;
+      }
+      //result->root = x_1;
+      //result->iter_conv = iter;
+      // Not sure why create a tmp, never returned?
+      /*newton_res *tmp = args->result;
+      tmp->root = x_1;
+      tmp->iter_conv = iter;
+      tmp->type_conv = conv;*/
+      sols[i][j].iter_conv = iter;
+      sols[i][j].type_conv = conv;
     }
-    x_0 = x_1;
-    iter++;
   }
-  //result->root = x_1;
-  //result->iter_conv = iter;
-  newton_res *tmp = args->result;
-  tmp->root = x_1;
-  tmp->iter_conv = iter;
-  tmp->type_conv = conv;
   pthread_exit(NULL);
-  return NULL;
+  return NULL;    
 }
 
 void fill_grid(double complex ** grid, size_t grid_size, size_t interval){
@@ -137,10 +159,10 @@ int main(int argc, char *argv[]){
       memcpy(arg, &argv[i][2], strlen(argv[i]) - 2);
       if (argv[i][1] == 'l') {
         // Grid size
-        grid_size = (int) strtol(arg, NULL, 10);
+        grid_size = (size_t) strtol(arg, NULL, 10);
       } else if (argv[i][1] == 't') {
         // Threads
-        num_threads = (int) strtol(arg, NULL, 10);
+        num_threads = (size_t) strtol(arg, NULL, 10);
       }
     }
     else if (isdigit(argv[i][0])) {
@@ -159,30 +181,25 @@ int main(int argc, char *argv[]){
 
   fill_grid(grid, grid_size, interval);
 
+  // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
+  size_t  block_size = grid_size / num_threads; 
   pthread_t threads[num_threads];
   int rc;
-  int t = 0;
-  struct newton_method_args args[grid_size][grid_size];
-
-  for (size_t i = 0; i < grid_size; i++){
-    for (size_t j = 0; j < grid_size; j++){
-    	args[i][j].d = d;
-      if (t % (num_threads) == 0)
-        t = 0;
-
-      args[i][j].result = &sols[i][j];
-      args[i][j].x_init = grid[i][j];
-      args[i][j].tid = (long)t;
-
-      rc = pthread_create(&threads[t], NULL, newton_method, &args[i][j]);
-      if(rc) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+  struct newton_method_args args; //Don't need array of args, overwrite before each create thread 
+  args.d = d; // d, and grid_size: No overwrite, same for all threads, glob varibales instead perhaps, but we get them from main args... block_size may differ for last thread.
+  args.grid_size= grid_size; 
+  args.block_size= block_size; 
+  size_t t,ix; //Wanted cool double index, seems to require external prealloc.
+  for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
+    args.tid = (long)t;
+    args.result = &sols[ix][0]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+    args.grid = &grid[ix][0];
+    rc = pthread_create(&threads[t], NULL, newton_method, &args);
+    if(rc) {
+      fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return 1;
       }
-
-      t++;
     }
-  }
   for (int i = 0; i < num_threads; ++i) {
     rc = pthread_join(threads[i], NULL);
     if(rc)
