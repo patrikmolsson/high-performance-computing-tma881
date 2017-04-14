@@ -25,7 +25,6 @@ struct newton_method_args{
   long tid;
   size_t grid_size;
   size_t block_size;
-
 };
 
 static const double TOL_CONV = 1e-3;
@@ -96,7 +95,6 @@ void fill_grid(double complex * grid, size_t grid_size, size_t interval){
   incr = d + d*I;
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
-      //grid[i][j] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
       grid[i + j*grid_size] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
       //printf("real %f imag %f \n",creal(grid[i][j]), cimag(grid[i][j]) );
     }
@@ -184,19 +182,12 @@ int main(int argc, char *argv[]){
   for (int i = 0; i < num_threads; ++i) {
     rc = pthread_join(threads[i], NULL);
     if(rc)
-    	fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
+      fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
 
   write_ppm(sols, grid_size);
 
-  //for (size_t i = 0; i < grid_size; i++){
-  //  free(grid[i]);
-  //  free(sols[i]);
-  //}
-
   free(grid);
   free(sols);
-  //pthread_exit(NULL);
   return 0;
 }
-
