@@ -57,7 +57,8 @@ void * newton_method(void * pv){
   complex double true_root[d];
   find_true_roots(d, true_root);
   complex double *grid = args->grid;
-  newton_res *sols = args->result;
+  newton_res* sols = args->result;
+  newton_res* sols2 = malloc(block_size * grid_size * sizeof(newton_res));
 
   complex double x_0, x_1;
   for(size_t i = 0; i<block_size; i++){
@@ -81,11 +82,11 @@ void * newton_method(void * pv){
       }
       sols[i*grid_size+j].iter_conv = iter;
       sols[i*grid_size+j].type_conv = conv;
-      //args->result[i*grid_size+j].iter_conv = iter;
-      //args->result[i*grid_size+j].type_conv = conv;
+      sols2[i*grid_size+j].iter_conv = iter;
+      sols2[i*grid_size+j].type_conv = conv;
     }
   }
-  return NULL;
+  return sols2;
 }
 
 void fill_grid(double complex * grid, size_t grid_size, size_t interval){
@@ -127,6 +128,37 @@ void write_ppm(newton_res *sols, size_t grid_size){
   fclose(fp);
 }
 
+void write_ppm2(newton_res **sols, size_t grid_size, size_t num_threads, size_t block_size){
+  FILE *fp;
+  fp = fopen("test2.ppm", "w+");
+  char for_print[6*grid_size + 1];
+  int type_of_conv;
+  fprintf(fp, "P3\n");
+  fprintf(fp, "%ld %ld\n", grid_size, grid_size);
+  fprintf(fp, "%d\n", 1);
+  //printf("hello %d \n", sols[0][1].type_conv);
+  for (size_t t = 0; t < num_threads; t++){
+  	//newton_res* t_res = sols[t];
+  	for (size_t i = 0; i < block_size; i++){
+  	  memset(for_print, 0, sizeof(for_print));
+  	  for (size_t j = 0; j < grid_size; j++){
+  	    type_of_conv = sols[0][i*grid_size+j].type_conv;
+  	    //type_of_conv = t_res[i*grid_size+j].type_conv;
+  	    if(type_of_conv == 0){
+  	      strcat(for_print, "1 0 0 ");
+  	    } else if(type_of_conv == 1){
+  	      strcat(for_print, "0 1 0 ");
+  	    } else if(type_of_conv == 2){
+  	      strcat(for_print, "0 0 1 ");
+  	    }
+  	  }
+  	  strcat(for_print, "\n");
+  	  fprintf(fp, "%s", for_print);
+  	}
+  }
+  fclose(fp);
+}
+
 int main(int argc, char *argv[]){
   size_t grid_size = 200, interval = 2, d = 3, num_threads = 4; //Default values
   double complex * grid;
@@ -156,6 +188,9 @@ int main(int argc, char *argv[]){
 
   grid = malloc(grid_size * grid_size * sizeof *grid);
   sols = malloc(grid_size * grid_size * sizeof *sols);
+  //newton_res **sols2 = calloc(num_threads, sizeof(newton_res*));
+  newton_res **sols2 = malloc(num_threads* sizeof(newton_res*));
+  struct newton_method_args *args = malloc(num_threads* sizeof(struct newton_method_args));
 
   fill_grid(grid, grid_size, interval);
 
@@ -163,31 +198,38 @@ int main(int argc, char *argv[]){
   size_t  block_size = grid_size / num_threads;
   pthread_t threads[num_threads];
   int rc;
-  struct newton_method_args args; //Don't need array of args, overwrite before each create thread
-  args.d = d; // d, and grid_size: No overwrite, same for all threads, glob varibales instead perhaps, but we get them from main args... block_size may differ for last thread.
-  args.grid_size= grid_size;
-  args.block_size= block_size;
   size_t t,ix; //Wanted cool double index, seems to require external prealloc.
   for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
-    args.tid = (long)t;
-    args.result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
-    args.grid = &grid[ix*grid_size];
-    rc = pthread_create(&threads[t], NULL, newton_method, &args);
+  	args[t].d = d; // d, and grid_size: No overwrite, same for all threads, glob varibales instead perhaps, but we get them from main args... block_size may differ for last thread.
+  	args[t].grid_size= grid_size;
+  	args[t].block_size= block_size;
+    args[t].tid = (long)t;
+    args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+    args[t].grid = &grid[ix*grid_size];
+    rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
     printf("ix t %zu %zu\n",ix, t);
     if(rc) {
       fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return 1;
       }
     }
-  for (int i = 0; i < num_threads; ++i) {
-    rc = pthread_join(threads[i], NULL);
+
+  for (t = 0; t < num_threads; t++){
+    rc = pthread_join(threads[t],(void**) &sols2[t]);
     if(rc)
       fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
 
   write_ppm(sols, grid_size);
+  //write_ppm2(sols2, grid_size, num_threads, block_size);
 
+  for(t = 0; t < num_threads; t++){
+  	free(sols2[t]);
+  }
+
+  free(args);
   free(grid);
   free(sols);
+  free(sols2);
   return 0;
 }
