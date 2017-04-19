@@ -70,7 +70,7 @@ void * newton_method(void * pv){
 
         x_1 = newton_iterate(x_0,(double) d);
 
-        if (abs(1 - cabs(x_1)) < TOL_CONV ) {
+        if (fabs(1.0f - cabs(x_1)) < TOL_CONV ) {
           for(size_t i=0; i<d;i++){
             if (cabs(x_1-true_roots[i]) < TOL_CONV){
               conv = i;
@@ -253,6 +253,7 @@ int main(int argc, char *argv[]){
           return 1;
       }
     }
+
     for (t = 0; t < num_threads; t++){
       rc = pthread_join(threads[t], NULL);
       if(rc)
