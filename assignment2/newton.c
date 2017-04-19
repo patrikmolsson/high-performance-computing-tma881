@@ -24,7 +24,7 @@ static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
 static const size_t interval = 2;
 
-// Init with default values
+// Init with default valuesm
 size_t d = 3;
 size_t grid_size = 1000;
 size_t num_threads = 3;
@@ -34,9 +34,17 @@ pthread_mutex_t mutex_max_iter;
 size_t max_iter_glob;
 
 void newton_iterate(double complex *x_0){
+// Still passing and writing a complex double, could change to just real and imag part.
+double x_re = creal(*x_0);
+double x_im = cimag(*x_0);
+// atan2; ensuring principal branch for arg(z).
+double arg = - atan2(x_im,x_re) *  ( (d*1.0f - 1.0f) );
+// Magnitude for 1/ ( d x^(d-1) )  
+double r_2 = pow( x_re*x_re + x_im*x_im , (1.0f-d*1.0f)/2.0 ) / ( d*1.0f )  ;
+*x_0 = (1.0f - 1.0f / d) * ( x_re + x_im*I  ) + r_2 * ( cos(arg) + sin(arg)*I ); 
 
-*x_0 = (1.0f - 1.0f /  d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
-
+// Previous complex double version for reference:
+//*x_0 = (1.0f - 1.0f / d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
 }
 
 void find_true_roots(complex double *true_root){
@@ -196,6 +204,8 @@ void write_ppm_convergence(newton_res *sols, char **colormap){
 }
 
 int main(int argc, char *argv[]){
+  double complex x = 2 + 0*I;
+  newton_iterate(&x);
   double complex * grid;
   newton_res * sols;
 
