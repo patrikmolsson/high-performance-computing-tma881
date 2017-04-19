@@ -6,6 +6,7 @@
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
+#include <time.h>
 
 // TODO: root not needed?
 typedef struct{
@@ -33,9 +34,14 @@ size_t block_size;
 pthread_mutex_t mutex_max_iter;
 size_t max_iter_glob;
 
+static double timespec_to_seconds (struct timespec* ts){
+  return (double)ts -> tv_sec + (double)ts -> tv_nsec / 1000000000.0;
+}
+
 void newton_iterate(double complex *x_0){
 
-*x_0 = (1.0f - 1.0f /  d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
+  *x_0 = (1.0f - 1.0f /  d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
+  //*x_0 = (1.0f - 1.0f / d) * *x_0 + cpow(*x_0, 1 - d) / d;
 
 }
 
@@ -196,6 +202,9 @@ void write_ppm_convergence(newton_res *sols, char **colormap){
 }
 
 int main(int argc, char *argv[]){
+  struct timespec start, end;
+	double total_t;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
   double complex * grid;
   newton_res * sols;
 
@@ -283,5 +292,10 @@ int main(int argc, char *argv[]){
     free(colormap[i]);
   }
   free(colormap);
+
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  total_t = timespec_to_seconds(&end) - timespec_to_seconds(&start);
+	printf("Time: %.4f\n", total_t);
+
   return 0;
 }
