@@ -17,11 +17,12 @@ typedef struct{
 struct newton_method_args{
   newton_res *result;
   complex double *grid;
+  complex double *true_roots;
 };
 
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
-static const double MAX_ITER = 1e4;
+static const size_t MAX_ITER = 1e4;
 
 // Init with default values
 size_t d = 3;
@@ -50,9 +51,7 @@ void * newton_method(void * pv){
   struct newton_method_args *args = pv;
   complex double *grid = args->grid;
   newton_res* sols = args->result;
-
-  complex double true_root[d];
-  find_true_roots(d, true_root);
+  complex double *true_roots = args->true_roots;
 
   complex double x_0, x_1;
   for(size_t i = 0; i<block_size; i++){
@@ -73,7 +72,7 @@ void * newton_method(void * pv){
 
         if (abs(1 - cabs(x_1)) < TOL_CONV ) {
           for(size_t i=0; i<d;i++){
-            if (cabs(x_1-true_root[i]) < TOL_CONV){
+            if (cabs(x_1-true_roots[i]) < TOL_CONV){
               conv = i;
               //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
             }
@@ -235,13 +234,19 @@ int main(int argc, char *argv[]){
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
   block_size = grid_size / num_threads;
+
+  complex double true_roots[d];
+  find_true_roots(d, true_roots);
+
   pthread_t threads[num_threads];
+
 
   struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
 
   int rc;
   size_t t,ix; //Wanted cool double index, seems to require external prealloc.
   for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
+    args[t].true_roots = true_roots;
     args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
     args[t].grid = &grid[ix*grid_size];
     rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
