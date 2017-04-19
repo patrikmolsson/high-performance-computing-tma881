@@ -23,6 +23,7 @@ struct newton_method_args{
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
 static const size_t MAX_ITER = 1e4;
+static const size_t interval = 2;
 
 // Init with default values
 size_t d = 3;
@@ -30,14 +31,13 @@ size_t grid_size = 1000;
 size_t num_threads = 3;
 size_t block_size;
 
-double complex newton_iterate(double complex x_0, double d){
+void newton_iterate(double complex *x_0){
 
-  double complex x_1 = (1.0 - 1.0 /  d) * x_0 + ( 1.0 ) / (  d * cpow(x_0, d - 1) );
+*x_0 = (1.0f - 1.0f /  d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
 
-  return x_1;
 }
 
-void find_true_roots(size_t d, complex double *true_root){
+void find_true_roots(complex double *true_root){
   /* One class of polynom: x^d - 1 = 0; => (a) one root always Re(root) = 1; (b) complex roots conjugate  */
   true_root[0] = 1.0;
   for(size_t i=1; i<d; i++ ){
@@ -53,7 +53,7 @@ void * newton_method(void * pv){
   newton_res* sols = args->result;
   complex double *true_roots = args->true_roots;
 
-  complex double x_0, x_1;
+  complex double x_0;
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
       x_0 = grid[i*grid_size+j];
@@ -68,16 +68,15 @@ void * newton_method(void * pv){
           && cimag(x_0 ) < TOL_DIV
           && iter < MAX_ITER ){
 
-        x_1 = newton_iterate(x_0,(double) d);
+          newton_iterate(&x_0);
 
-        if (fabs(1.0f - cabs(x_1)) < TOL_CONV ) {
+        if (fabs(1.0f - cabs(x_0)) < TOL_CONV ) {
           for(size_t i=0; i<d;i++){
-            if (cabs(x_1-true_roots[i]) < TOL_CONV){
+            if (cabs(x_0-true_roots[i]) < TOL_CONV){
               conv = i;
             }
           }
         }
-        x_0 = x_1;
         iter++;
       }
       sols[i*grid_size+j].iter_conv = iter;
@@ -87,7 +86,7 @@ void * newton_method(void * pv){
   return NULL;
 }
 
-void fill_grid(double complex * grid, size_t grid_size, size_t interval){
+void fill_grid(double complex * grid){
   double complex incr;
   double d = 2*(double)interval / grid_size;
   d += d/(grid_size-1);
@@ -99,7 +98,7 @@ void fill_grid(double complex * grid, size_t grid_size, size_t interval){
   }
 }
 
-void root_color_map(char **colormap, size_t d){
+void root_color_map(char **colormap){
   int k;
   for(int i=0; i<d; i++){
     for (int c = 2; c >= 0; c--){
@@ -147,7 +146,6 @@ void write_ppm_attractors(newton_res *sols, char **colormap){
     }
     col++;
   }
-
   fclose(fp);
 }
 
@@ -185,12 +183,10 @@ void write_ppm_convergence(newton_res *sols, char **colormap){
     }
     z++;
   }
-
   fclose(fp);
 }
 
 int main(int argc, char *argv[]){
-  size_t interval = 2;
   double complex * grid;
   newton_res * sols;
 
@@ -223,18 +219,18 @@ int main(int argc, char *argv[]){
   for(int i = 0; i < d; i++ ){
     colormap[i] = malloc( ( str_length + 1 ) );
   }
-  root_color_map(colormap, d);
+  root_color_map(colormap);
   grid = malloc(grid_size * grid_size * sizeof *grid);
   sols = malloc(grid_size * grid_size * sizeof *sols);
 
-  fill_grid(grid, grid_size, interval);
+  fill_grid(grid);
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
 
   block_size = grid_size / num_threads;
 
   complex double true_roots[d];
-  find_true_roots(d, true_roots);
+  find_true_roots(true_roots);
 
   if(num_threads > 1) {
     pthread_t threads[num_threads];
@@ -277,6 +273,5 @@ int main(int argc, char *argv[]){
     free(colormap[i]);
   }
   free(colormap);
-  //pthread_exit(NULL);
   return 0;
 }
