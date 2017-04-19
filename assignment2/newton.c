@@ -22,7 +22,6 @@ struct newton_method_args{
 
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
-static const size_t MAX_ITER = 1e4;
 static const size_t interval = 2;
 
 // Init with default values
@@ -65,8 +64,7 @@ void * newton_method(void * pv){
       while(conv == -1
           && cabs(x_0) > TOL_CONV
           && creal(x_0) < TOL_DIV
-          && cimag(x_0 ) < TOL_DIV
-          && iter < MAX_ITER ){
+          && cimag(x_0 ) < TOL_DIV ){
 
           newton_iterate(&x_0);
 
