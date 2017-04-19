@@ -13,4 +13,4 @@ main : $(SOURCE)
 $(OBJS) : $(SOURCE)
 
 clean:
-	@ls | grep -v -E '(makefile|$(SOURCE)|main.c)' | xargs rm -f
+	@ls | grep -v -E '(makefile|^$(SOURCE)$$)' | xargs rm -f
