@@ -29,6 +29,9 @@ size_t d = 3;
 size_t grid_size = 1000;
 size_t num_threads = 3;
 size_t block_size;
+// Global variable to check max iterations to keep convergence ppm in range.
+pthread_mutex_t mutex_max_iter;
+size_t max_iter_glob;
 
 void newton_iterate(double complex *x_0){
 
@@ -51,7 +54,7 @@ void * newton_method(void * pv){
   complex double *grid = args->grid;
   newton_res* sols = args->result;
   complex double *true_roots = args->true_roots;
-
+  size_t max_iter = 0;
   complex double x_0;
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
@@ -77,10 +80,18 @@ void * newton_method(void * pv){
         }
         iter++;
       }
+      if(iter > max_iter){
+        max_iter = iter;
+      }
       sols[i*grid_size+j].iter_conv = iter;
       sols[i*grid_size+j].type_conv = conv;
     }
   }
+  pthread_mutex_lock(&mutex_max_iter);
+  if(max_iter > max_iter_glob){
+    max_iter_glob = max_iter;
+  }
+  pthread_mutex_unlock(&mutex_max_iter);
   return NULL;
 }
 
@@ -156,18 +167,18 @@ void write_ppm_convergence(newton_res *sols){
 
   fprintf(fp, "P2\n");
   fprintf(fp, "%ld %ld\n", grid_size, grid_size);
-  fprintf(fp, "%d\n", 255);
+  fprintf(fp, "%zu\n", max_iter_glob);
 
   char for_print[grid_size * 4 + 1];
-  int iter_conv;
+  size_t iter_conv;
 
   size_t z = 1;
-  char str2[10];
+  char str2[5];
 
   for (size_t i = 0; i < grid_size * grid_size; i++){
     iter_conv = sols[i].iter_conv;
 
-    sprintf(str2, "%i ", iter_conv * 10);
+    sprintf(str2, "%zu ", max_iter_glob - iter_conv);
 
     strcat(for_print, str2);
 
@@ -209,7 +220,6 @@ int main(int argc, char *argv[]){
       d = (int) strtol(argv[i], NULL, 10);
     }
   }
-
   // COLOR MAP INIT
   const size_t str_length = 6;
   char ** colormap;
@@ -232,8 +242,8 @@ int main(int argc, char *argv[]){
   find_true_roots(true_roots);
 
   if(num_threads > 1) {
+    pthread_mutex_init(&mutex_max_iter, NULL);
     pthread_t threads[num_threads];
-
     struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
 
     int rc;
@@ -254,9 +264,11 @@ int main(int argc, char *argv[]){
       if(rc)
         fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
     }
+    pthread_mutex_destroy(&mutex_max_iter);
     free(args);
   } else {
     struct newton_method_args args;
+    args.true_roots = true_roots;
     args.result = &sols[0];
     args.grid = &grid[0];
     args.true_roots = true_roots;
