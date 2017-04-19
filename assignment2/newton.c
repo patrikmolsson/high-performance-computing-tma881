@@ -16,8 +16,8 @@ typedef struct{
 
 struct newton_method_args{
   newton_res *result;
-  //complex double *grid;
   complex double *true_roots;
+  size_t tid;
 };
 
 static const double TOL_CONV = 1e-3;
@@ -52,18 +52,18 @@ void find_true_roots(complex double *true_root){
 
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
-  //complex double *grid = args->grid;
   newton_res* sols = args->result;
   complex double *true_roots = args->true_roots;
+  size_t tid = args->tid;
   size_t max_iter = 0;
   complex double x_0;
-  double re_incr = d_dbl;
-  complex double im_incr = d_dbl*I;
+  double incr = d_dbl;
+  size_t i2;
 
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
-      x_0 = (j*re_incr - interval) + (i*im_incr*I - interval*I);
-      //x_0 = grid[i*grid_size+j];
+      i2 = i + block_size*tid;
+      x_0 = (j*incr - interval) + (i2*incr*I - interval*I);
       int conv = -1;
       size_t iter = 0;
 
@@ -77,9 +77,9 @@ void * newton_method(void * pv){
           newton_iterate(&x_0);
 
         if (fabs(1.0f - cabs(x_0)) < TOL_CONV ) {
-          for(size_t i=0; i<d;i++){
-            if (cabs(x_0-true_roots[i]) < TOL_CONV){
-              conv = i;
+          for(size_t k=0; k<d;k++){
+            if (cabs(x_0-true_roots[k]) < TOL_CONV){
+              conv = k;
             }
           }
         }
@@ -258,6 +258,7 @@ int main(int argc, char *argv[]){
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
       args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
       args[t].true_roots = true_roots;
+      args[t].tid = t;
       //args[t].grid = &grid[ix*grid_size];
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
