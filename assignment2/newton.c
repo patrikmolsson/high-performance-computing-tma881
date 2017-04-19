@@ -27,8 +27,6 @@ static const double MAX_ITER = 1e4;
 size_t d = 3;
 size_t grid_size = 1000;
 size_t num_threads = 3;
-//
-// Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
 size_t block_size;
 
 double complex newton_iterate(double complex x_0, double d){
@@ -65,12 +63,20 @@ void * newton_method(void * pv){
 
       // TODO: Convergence: if abs(x_1) != 1 + eps, keep iterate.
       // Root check: start by checking real values <= always conjugate
-      while(conv == -1 && cabs(x_0) > TOL_CONV && creal(x_0) < TOL_DIV && cimag(x_0 ) < TOL_DIV && iter < MAX_ITER ){
+      while(conv == -1
+          && cabs(x_0) > TOL_CONV
+          && creal(x_0) < TOL_DIV
+          && cimag(x_0 ) < TOL_DIV
+          && iter < MAX_ITER ){
+
         x_1 = newton_iterate(x_0,(double) d);
-        for(size_t i=0; i<d;i++){
-          if (cabs(x_1-true_root[i]) < TOL_CONV){
-            conv = i;
-            //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
+
+        if (abs(1 - cabs(x_1)) < TOL_CONV ) {
+          for(size_t i=0; i<d;i++){
+            if (cabs(x_1-true_root[i]) < TOL_CONV){
+              conv = i;
+              //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
+            }
           }
         }
         x_0 = x_1;
@@ -126,7 +132,7 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
   char for_print[grid_size * 6 + 1];
   int type_of_conv;
 
-  size_t z = 1;
+  size_t col = 1;
 
   for (size_t i = 0; i < grid_size * grid_size; i++){
     type_of_conv = sols[i].type_conv;
@@ -138,13 +144,13 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
       strcat(for_print, "1 1 1 ");
     }
 
-    if (z % grid_size == 0) {
+    if (col % grid_size == 0) {
       strcat(for_print, "\n");
       fprintf(fp, "%s", for_print);
       memset(for_print, 0, grid_size * 6 + 1);
-      z = 0;
+      col = 0;
     }
-    z++;
+    col++;
   }
 
   fclose(fp);
