@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <pthread.h>
 
+// TODO: root not needed?
 typedef struct{
   double complex root;
   int iter_conv;
@@ -15,18 +16,24 @@ typedef struct{
 
 struct newton_method_args{
   newton_res *result;
-  complex double x_init;
-  size_t d;
-  long tid;
+  complex double *grid;
 };
 
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
 static const double MAX_ITER = 1e4;
 
-double complex newton_iterate(double complex x_0, size_t d){
+// Init with default values
+size_t d = 3;
+size_t grid_size = 1000;
+size_t num_threads = 3;
+//
+// Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
+size_t block_size;
 
-  double complex x_1 = x_0 -( cpow(x_0,d) - 1.0) / ( (double) d * cpow(x_0,d-1) );
+double complex newton_iterate(double complex x_0, double d){
+
+  double complex x_1 = (1 - 1 /  d) * x_0 + ( 1.0 ) / (  d * cpow(x_0, d - 1) );
 
   return x_1;
 }
@@ -43,51 +50,51 @@ void find_true_roots(size_t d, complex double *true_root){
 
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
-  int conv = -1;
-  size_t d = args->d;
-  complex double x_0 = args->x_init;
-  complex double x_1;
+  complex double *grid = args->grid;
+  newton_res* sols = args->result;
+
   complex double true_root[d];
   find_true_roots(d, true_root);
-  size_t iter = 0;
-  int bool = 0;
-  if(creal(x_0) == -2 && cimag(x_0) == 2){
-  	bool = 1;
-  }
 
-  while(conv == -1 && cabs(x_0) > TOL_CONV && creal(x_0) < TOL_DIV && cimag(x_0 ) < TOL_DIV && iter < MAX_ITER ){
-    x_1 = newton_iterate(x_0, d);
-    for(size_t i=0; i<d;i++){
-      if (cabs(x_1-true_root[i]) < TOL_CONV){
-        conv = i;
-        if(bool == 1){
-        	printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
+  complex double x_0, x_1;
+  for(size_t i = 0; i<block_size; i++){
+    for(size_t j = 0; j<grid_size; j++){
+      x_0 = grid[i*grid_size+j];
+      int conv = -1;
+      size_t iter = 0;
+
+      // TODO: Convergence: if abs(x_1) != 1 + eps, keep iterate.
+      // Root check: start by checking real values <= always conjugate
+      while(conv == -1 && cabs(x_0) > TOL_CONV && creal(x_0) < TOL_DIV && cimag(x_0 ) < TOL_DIV && iter < MAX_ITER ){
+        x_1 = newton_iterate(x_0,(double) d);
+        for(size_t i=0; i<d;i++){
+          if (cabs(x_1-true_root[i]) < TOL_CONV){
+            conv = i;
+            //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
+          }
         }
+        x_0 = x_1;
+        iter++;
       }
+      sols[i*grid_size+j].iter_conv = iter;
+      sols[i*grid_size+j].type_conv = conv;
     }
-    x_0 = x_1;
-    iter++;
   }
-  newton_res *tmp = args->result;
-  tmp->root = x_1;
-  tmp->iter_conv = iter;
-  tmp->type_conv = conv;
   return NULL;
 }
 
-void fill_grid(double complex ** grid, size_t grid_size, size_t interval){
+void fill_grid(double complex * grid, size_t grid_size, size_t interval){
   double complex incr;
   double d = 2*(double)interval / grid_size;
   d += d/(grid_size-1);
   incr = d + d*I;
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
-      grid[i][j] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
+      grid[i*grid_size + j] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
       //printf("real %f imag %f \n",creal(grid[i][j]), cimag(grid[i][j]) );
     }
   }
 }
-
 
 void root_color_map(char **colormap, size_t d){
   int k;
@@ -104,70 +111,88 @@ void root_color_map(char **colormap, size_t d){
   }
 }
 
-void write_ppm_attractors(newton_res **sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, size_t d){
+
   char str[25];
-  sprintf(str, "newton_attractors_x%i.ppm \n", (int)d);//printf("%s \n",str);
+  sprintf(str, "newton_attractors_x%i.ppm", (int)d);//printf("%s \n",str);
   printf("%s",str);
   FILE *fp;
   fp = fopen(str, "w+");
-  char for_print[6*grid_size + 1];
-  int type_of_conv;
+
   fprintf(fp, "P3\n");
   fprintf(fp, "%ld %ld\n", grid_size, grid_size);
   fprintf(fp, "%d\n", 1);
-  for (size_t i = 0; i < grid_size; i++){
-    memset(for_print, 0, sizeof(for_print));
-    for (size_t j = 0; j < grid_size; j++){
-      type_of_conv = sols[i][j].type_conv;
-      if(type_of_conv >= 0 && type_of_conv <= d-1){
-        strcat(for_print, colormap[type_of_conv]);
-      }
-      else{
-        strcat(for_print, "1 1 1 ");
-      }
+
+  char for_print[grid_size * 6 + 1];
+  int type_of_conv;
+
+  size_t z = 1;
+
+  for (size_t i = 0; i < grid_size * grid_size; i++){
+    type_of_conv = sols[i].type_conv;
+
+    if(type_of_conv >= 0 && type_of_conv <= d-1){
+      strcat(for_print, colormap[type_of_conv]);
     }
-    strcat(for_print, "\n");
-    fprintf(fp, "%s", for_print);
+    else{
+      strcat(for_print, "1 1 1 ");
+    }
+
+    if (z % grid_size == 0) {
+      strcat(for_print, "\n");
+      fprintf(fp, "%s", for_print);
+      memset(for_print, 0, grid_size * 6 + 1);
+      z = 0;
+    }
+    z++;
   }
+
   fclose(fp);
 }
 
-void write_ppm_convergence(newton_res **sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, size_t d){
   char str[26];
-  sprintf(str, "newton_convergence_x%i.ppm \n", (int)d);//printf("%s \n",str);
+  sprintf(str, "newton_convergence_x%i.pgm", (int)d);//printf("%s \n",str);
   printf("%s",str);
 
   FILE *fp;
   fp = fopen(str, "w+");
-  char for_print[6*grid_size + 1];
-  int type_of_conv;
-  fprintf(fp, "P3\n");
+
+  fprintf(fp, "P2\n");
   fprintf(fp, "%ld %ld\n", grid_size, grid_size);
-  fprintf(fp, "%d\n", 1);
-  for (size_t i = 0; i < grid_size; i++){
-    memset(for_print, 0, sizeof(for_print));
-    for (size_t j = 0; j < grid_size; j++){
-      type_of_conv = sols[i][j].type_conv;
-      if(type_of_conv >= 0 && type_of_conv <= d-1){
-        strcat(for_print, colormap[type_of_conv]);
-      }
-      else{
-        strcat(for_print, "1 1 1 ");
-      }
+  fprintf(fp, "%d\n", 255);
+
+  char for_print[grid_size * 4 + 1];
+  int iter_conv;
+
+  size_t z = 1;
+  char str2[4];
+
+  for (size_t i = 0; i < grid_size * grid_size; i++){
+    iter_conv = sols[i].iter_conv;
+
+    sprintf(str2, "%i ", iter_conv * 10);
+
+    strcat(for_print, str2);
+
+    if (z % grid_size == 0) {
+      strcat(for_print, "\n");
+      fprintf(fp, "%s", for_print);
+      memset(for_print, 0, grid_size * 4 + 1);
+      z = 0;
     }
-    strcat(for_print, "\n");
-    fprintf(fp, "%s", for_print);
+    z++;
   }
+
   fclose(fp);
 }
-
 
 int main(int argc, char *argv[]){
-  size_t grid_size = 200, interval = 2, d = 3, num_threads = 4; //Default values
-  double complex ** grid;
-  newton_res ** sols;
-  char arg[10];
+  size_t interval = 2;
+  double complex * grid;
+  newton_res * sols;
 
+  char arg[10];
   if (argc > 4)
     printf("Too many arguments\n");
 
@@ -177,10 +202,10 @@ int main(int argc, char *argv[]){
       memcpy(arg, &argv[i][2], strlen(argv[i]) - 2);
       if (argv[i][1] == 'l') {
         // Grid size
-        grid_size = (int) strtol(arg, NULL, 10);
+        grid_size = (size_t) strtol(arg, NULL, 10);
       } else if (argv[i][1] == 't') {
         // Threads
-        num_threads = (int) strtol(arg, NULL, 10);
+        num_threads = (size_t) strtol(arg, NULL, 10);
       }
     }
     else if (isdigit(argv[i][0])) {
@@ -189,8 +214,6 @@ int main(int argc, char *argv[]){
     }
   }
 
-  grid = malloc(grid_size * sizeof *grid);
-  sols = malloc(grid_size * sizeof *sols);
   // COLOR MAP INIT
   const size_t str_length = 6;
   char ** colormap;
@@ -199,51 +222,41 @@ int main(int argc, char *argv[]){
     colormap[i] = malloc( ( str_length + 1 ) );
   }
   root_color_map(colormap, d);
-  for (size_t i=0; i < grid_size; i++){
-    grid[i] = malloc(grid_size * sizeof *grid[i]);
-    sols[i] = malloc(grid_size * sizeof *sols[i]);
-  }
+  grid = malloc(grid_size * grid_size * sizeof *grid);
+  sols = malloc(grid_size * grid_size * sizeof *sols);
 
   fill_grid(grid, grid_size, interval);
 
+  // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
+  block_size = grid_size / num_threads;
   pthread_t threads[num_threads];
+
+  struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
+
   int rc;
-  int t = 0;
-  struct newton_method_args args[grid_size][grid_size];
-
-  for (size_t i = 0; i < grid_size; i++){
-    for (size_t j = 0; j < grid_size; j++){
-    	args[i][j].d = d;
-      if (t % (num_threads) == 0)
-        t = 0;
-
-      args[i][j].result = &sols[i][j];
-      args[i][j].x_init = grid[i][j];
-      args[i][j].tid = (long)t;
-
-      rc = pthread_create(&threads[t], NULL, newton_method, &args[i][j]);
-      if(rc) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+  size_t t,ix; //Wanted cool double index, seems to require external prealloc.
+  for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
+    args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+    args[t].grid = &grid[ix*grid_size];
+    rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
+    if(rc) {
+      fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return 1;
       }
+  }
 
-      t++;
-    }
-  }
-  for (int i = 0; i < num_threads; ++i) {
-    rc = pthread_join(threads[i], NULL);
+  for (t = 0; t < num_threads; t++){
+    rc = pthread_join(threads[t], NULL);
     if(rc)
-    	fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
+      fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
+
+  printf("Done with calc\n");
 
   write_ppm_attractors(sols, grid_size, colormap, d);
   write_ppm_convergence(sols, grid_size, colormap, d);
 
-  for (size_t i = 0; i < grid_size; i++){
-    free(grid[i]);
-    free(sols[i]);
-  }
-
+  free(args);
   free(grid);
   free(sols);
   for(int i = 0; i < d; i++ ){
@@ -253,4 +266,3 @@ int main(int argc, char *argv[]){
   //pthread_exit(NULL);
   return 0;
 }
-

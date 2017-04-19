@@ -8,7 +8,7 @@ LIBS = -pthread -lm
 all : main
 
 main : $(SOURCE)
-	$(CC) -o $(OUTPUT) $(SOURCE) $(LIBS)
+	$(CC) -o $(OUTPUT) $(SOURCE) $(LIBS) -Wall
 
 $(OBJS) : $(SOURCE)
 
