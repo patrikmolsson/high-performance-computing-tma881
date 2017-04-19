@@ -32,7 +32,7 @@ size_t block_size;
 
 void newton_iterate(double complex *x_0){
 
-*x_0 = (1.0f - 1.0f /  d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
+*x_0 = (1.0f - 1.0f /  d) * *x_0 + ( 1.0f ) / (  d*1.0f * cpow(*x_0, d - 1) );
 
 }
 
@@ -147,7 +147,7 @@ void write_ppm_attractors(newton_res *sols, char **colormap){
   fclose(fp);
 }
 
-void write_ppm_convergence(newton_res *sols, char **colormap){
+void write_ppm_convergence(newton_res *sols){
   char str[26];
   sprintf(str, "newton_convergence_x%i.pgm", (int)d);
 
@@ -213,9 +213,10 @@ int main(int argc, char *argv[]){
   // COLOR MAP INIT
   const size_t str_length = 6;
   char ** colormap;
-  colormap = malloc(d * sizeof *colormap);
+  //colormap = malloc(d * sizeof *colormap);
+  colormap = calloc(d, sizeof *colormap);
   for(int i = 0; i < d; i++ ){
-    colormap[i] = malloc( ( str_length + 1 ) );
+    colormap[i] = calloc(str_length + 1, sizeof *colormap[i]);
   }
   root_color_map(colormap);
   grid = malloc(grid_size * grid_size * sizeof *grid);
@@ -263,7 +264,7 @@ int main(int argc, char *argv[]){
   }
 
   write_ppm_attractors(sols, colormap);
-  write_ppm_convergence(sols, colormap);
+  write_ppm_convergence(sols);
 
   free(grid);
   free(sols);
