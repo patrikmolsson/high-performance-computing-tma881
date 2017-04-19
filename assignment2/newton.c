@@ -32,7 +32,7 @@ size_t block_size;
 
 double complex newton_iterate(double complex x_0, double d){
 
-  double complex x_1 = (1 - 1 /  d) * x_0 + ( 1.0 ) / (  d * cpow(x_0, d - 1) );
+  double complex x_1 = (1.0 - 1.0 /  d) * x_0 + ( 1.0 ) / (  d * cpow(x_0, d - 1) );
 
   return x_1;
 }
@@ -230,17 +230,17 @@ int main(int argc, char *argv[]){
   fill_grid(grid, grid_size, interval);
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
-  
+
   block_size = grid_size / num_threads;
-  
+
   complex double true_roots[d];
   find_true_roots(d, true_roots);
 
-  if(num_threads > 1) {  
+  if(num_threads > 1) {
     pthread_t threads[num_threads];
-  
+
     struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
-  
+
     int rc;
     size_t t,ix; //Wanted cool double index, seems to require external prealloc.
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
@@ -253,7 +253,6 @@ int main(int argc, char *argv[]){
           return 1;
       }
     }
-  
     for (t = 0; t < num_threads; t++){
       rc = pthread_join(threads[t], NULL);
       if(rc)
@@ -264,10 +263,9 @@ int main(int argc, char *argv[]){
     struct newton_method_args args;
     args.result = &sols[0];
     args.grid = &grid[0];
+    args.true_roots = true_roots;
     newton_method((void *) &args);
   }
-
-  
 
   write_ppm_attractors(sols, colormap);
   write_ppm_convergence(sols, colormap);
