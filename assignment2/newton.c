@@ -166,7 +166,7 @@ void write_ppm_convergence(newton_res *sols, char **colormap){
   int iter_conv;
 
   size_t z = 1;
-  char str2[5];
+  char str2[10];
 
   for (size_t i = 0; i < grid_size * grid_size; i++){
     iter_conv = sols[i].iter_conv;
@@ -230,39 +230,48 @@ int main(int argc, char *argv[]){
   fill_grid(grid, grid_size, interval);
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
+  
   block_size = grid_size / num_threads;
-
+  
   complex double true_roots[d];
   find_true_roots(d, true_roots);
 
-  pthread_t threads[num_threads];
-
-
-  struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
-
-  int rc;
-  size_t t,ix; //Wanted cool double index, seems to require external prealloc.
-  for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
-    args[t].true_roots = true_roots;
-    args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
-    args[t].grid = &grid[ix*grid_size];
-    rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
-    if(rc) {
-      fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        return 1;
+  if(num_threads > 1) {  
+    pthread_t threads[num_threads];
+  
+    struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
+  
+    int rc;
+    size_t t,ix; //Wanted cool double index, seems to require external prealloc.
+    for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
+      args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+      args[t].true_roots = true_roots;
+      args[t].grid = &grid[ix*grid_size];
+      rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
+      if(rc) {
+        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+          return 1;
       }
+    }
+  
+    for (t = 0; t < num_threads; t++){
+      rc = pthread_join(threads[t], NULL);
+      if(rc)
+        fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
+    }
+    free(args);
+  } else {
+    struct newton_method_args args;
+    args.result = &sols[0];
+    args.grid = &grid[0];
+    newton_method((void *) &args);
   }
 
-  for (t = 0; t < num_threads; t++){
-    rc = pthread_join(threads[t], NULL);
-    if(rc)
-      fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
-  }
+  
 
   write_ppm_attractors(sols, colormap);
   write_ppm_convergence(sols, colormap);
 
-  free(args);
   free(grid);
   free(sols);
   for(int i = 0; i < d; i++ ){
