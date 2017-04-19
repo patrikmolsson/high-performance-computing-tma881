@@ -17,11 +17,12 @@ typedef struct{
 struct newton_method_args{
   newton_res *result;
   complex double *grid;
+  complex double *true_roots;
 };
 
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
-static const double MAX_ITER = 1e4;
+static const size_t MAX_ITER = 1e4;
 
 // Init with default values
 size_t d = 3;
@@ -50,9 +51,7 @@ void * newton_method(void * pv){
   struct newton_method_args *args = pv;
   complex double *grid = args->grid;
   newton_res* sols = args->result;
-
-  complex double true_root[d];
-  find_true_roots(d, true_root);
+  complex double *true_roots = args->true_roots;
 
   complex double x_0, x_1;
   for(size_t i = 0; i<block_size; i++){
@@ -73,9 +72,8 @@ void * newton_method(void * pv){
 
         if (abs(1 - cabs(x_1)) < TOL_CONV ) {
           for(size_t i=0; i<d;i++){
-            if (cabs(x_1-true_root[i]) < TOL_CONV){
+            if (cabs(x_1-true_roots[i]) < TOL_CONV){
               conv = i;
-              //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
             }
           }
         }
@@ -97,7 +95,6 @@ void fill_grid(double complex * grid, size_t grid_size, size_t interval){
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
       grid[i*grid_size + j] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
-      //printf("real %f imag %f \n",creal(grid[i][j]), cimag(grid[i][j]) );
     }
   }
 }
@@ -113,15 +110,13 @@ void root_color_map(char **colormap, size_t d){
     else
       strcat( colormap[i], "0 ");
     }
-    //printf("Color: %s \n", colormap[i] );
   }
 }
 
-void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_attractors(newton_res *sols, char **colormap){
 
   char str[25];
-  sprintf(str, "newton_attractors_x%i.ppm", (int)d);//printf("%s \n",str);
-  //printf("%s",str);
+  sprintf(str, "newton_attractors_x%i.ppm", (int)d);
   FILE *fp;
   fp = fopen(str, "w+");
 
@@ -156,10 +151,9 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
   fclose(fp);
 }
 
-void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_convergence(newton_res *sols, char **colormap){
   char str[26];
-  sprintf(str, "newton_convergence_x%i.pgm", (int)d);//printf("%s \n",str);
-  //printf("%s",str);
+  sprintf(str, "newton_convergence_x%i.pgm", (int)d);
 
   FILE *fp;
   fp = fopen(str, "w+");
@@ -172,7 +166,7 @@ void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, 
   int iter_conv;
 
   size_t z = 1;
-  char str2[4];
+  char str2[10];
 
   for (size_t i = 0; i < grid_size * grid_size; i++){
     iter_conv = sols[i].iter_conv;
@@ -181,10 +175,12 @@ void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, 
 
     strcat(for_print, str2);
 
+    memset(str2, 0, sizeof str2);
+
     if (z % grid_size == 0) {
       strcat(for_print, "\n");
       fprintf(fp, "%s", for_print);
-      memset(for_print, 0, grid_size * 4 + 1);
+      memset(for_print, 0, sizeof for_print);
       z = 0;
     }
     z++;
@@ -236,6 +232,10 @@ int main(int argc, char *argv[]){
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
   
   block_size = grid_size / num_threads;
+  
+  complex double true_roots[d];
+  find_true_roots(d, true_roots);
+
   if(num_threads > 1) {  
     pthread_t threads[num_threads];
   
@@ -245,6 +245,7 @@ int main(int argc, char *argv[]){
     size_t t,ix; //Wanted cool double index, seems to require external prealloc.
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
       args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+      args[t].true_roots = true_roots;
       args[t].grid = &grid[ix*grid_size];
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
@@ -267,10 +268,9 @@ int main(int argc, char *argv[]){
   }
 
   
-  //printf("Done with calc\n");
 
-  write_ppm_attractors(sols, grid_size, colormap, d);
-  write_ppm_convergence(sols, grid_size, colormap, d);
+  write_ppm_attractors(sols, colormap);
+  write_ppm_convergence(sols, colormap);
 
   free(grid);
   free(sols);
