@@ -113,7 +113,7 @@ void root_color_map(char **colormap, size_t d){
   }
 }
 
-void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_attractors(newton_res *sols, char **colormap){
 
   char str[25];
   sprintf(str, "newton_attractors_x%i.ppm", (int)d);
@@ -151,7 +151,7 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
   fclose(fp);
 }
 
-void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, size_t d){
+void write_ppm_convergence(newton_res *sols, char **colormap){
   char str[26];
   sprintf(str, "newton_convergence_x%i.pgm", (int)d);
 
@@ -259,8 +259,8 @@ int main(int argc, char *argv[]){
       fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
 
-  write_ppm_attractors(sols, grid_size, colormap, d);
-  write_ppm_convergence(sols, grid_size, colormap, d);
+  write_ppm_attractors(sols, colormap);
+  write_ppm_convergence(sols, colormap);
 
   free(args);
   free(grid);
