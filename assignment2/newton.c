@@ -16,7 +16,7 @@ typedef struct{
 
 struct newton_method_args{
   newton_res *result;
-  complex double *grid;
+  //complex double *grid;
   complex double *true_roots;
 };
 
@@ -51,14 +51,20 @@ void find_true_roots(complex double *true_root){
 
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
-  complex double *grid = args->grid;
+  //complex double *grid = args->grid;
   newton_res* sols = args->result;
   complex double *true_roots = args->true_roots;
   size_t max_iter = 0;
   complex double x_0;
+  double complex incr;
+  double d_dbl = 2*(double)interval / grid_size;
+  d_dbl += d_dbl/(grid_size-1);
+  incr = d_dbl + d_dbl*I;
+
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
-      x_0 = grid[i*grid_size+j];
+      x_0 = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
+      //x_0 = grid[i*grid_size+j];
       int conv = -1;
       size_t iter = 0;
 
@@ -97,9 +103,9 @@ void * newton_method(void * pv){
 
 void fill_grid(double complex * grid){
   double complex incr;
-  double d = 2*(double)interval / grid_size;
-  d += d/(grid_size-1);
-  incr = d + d*I;
+  double d_dbl = 2*(double)interval / grid_size;
+  d_dbl += d_dbl/(grid_size-1);
+  incr = d_dbl + d_dbl*I;
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
       grid[i*grid_size + j] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
@@ -196,7 +202,7 @@ void write_ppm_convergence(newton_res *sols){
 }
 
 int main(int argc, char *argv[]){
-  double complex * grid;
+  //double complex * grid;
   newton_res * sols;
 
   char arg[10];
@@ -229,10 +235,10 @@ int main(int argc, char *argv[]){
     colormap[i] = calloc(str_length + 1, sizeof *colormap[i]);
   }
   root_color_map(colormap);
-  grid = malloc(grid_size * grid_size * sizeof *grid);
+  //grid = malloc(grid_size * grid_size * sizeof *grid);
   sols = malloc(grid_size * grid_size * sizeof *sols);
 
-  fill_grid(grid);
+  //fill_grid(grid);
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
 
@@ -251,7 +257,7 @@ int main(int argc, char *argv[]){
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
       args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
       args[t].true_roots = true_roots;
-      args[t].grid = &grid[ix*grid_size];
+      //args[t].grid = &grid[ix*grid_size];
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
@@ -270,7 +276,7 @@ int main(int argc, char *argv[]){
     struct newton_method_args args;
     args.true_roots = true_roots;
     args.result = &sols[0];
-    args.grid = &grid[0];
+    //args.grid = &grid[0];
     args.true_roots = true_roots;
     newton_method((void *) &args);
   }
@@ -278,7 +284,7 @@ int main(int argc, char *argv[]){
   write_ppm_attractors(sols, colormap);
   write_ppm_convergence(sols);
 
-  free(grid);
+  //free(grid);
   free(sols);
   for(int i = 0; i < d; i++ ){
     free(colormap[i]);
