@@ -121,7 +121,7 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
 
   char str[25];
   sprintf(str, "newton_attractors_x%i.ppm", (int)d);//printf("%s \n",str);
-  printf("%s",str);
+  //printf("%s",str);
   FILE *fp;
   fp = fopen(str, "w+");
 
@@ -159,7 +159,7 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
 void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, size_t d){
   char str[26];
   sprintf(str, "newton_convergence_x%i.pgm", (int)d);//printf("%s \n",str);
-  printf("%s",str);
+  //printf("%s",str);
 
   FILE *fp;
   fp = fopen(str, "w+");
@@ -234,35 +234,44 @@ int main(int argc, char *argv[]){
   fill_grid(grid, grid_size, interval);
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
+  
   block_size = grid_size / num_threads;
-  pthread_t threads[num_threads];
-
-  struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
-
-  int rc;
-  size_t t,ix; //Wanted cool double index, seems to require external prealloc.
-  for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
-    args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
-    args[t].grid = &grid[ix*grid_size];
-    rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
-    if(rc) {
-      fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        return 1;
+  if(num_threads > 1) {  
+    pthread_t threads[num_threads];
+  
+    struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
+  
+    int rc;
+    size_t t,ix; //Wanted cool double index, seems to require external prealloc.
+    for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
+      args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+      args[t].grid = &grid[ix*grid_size];
+      rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
+      if(rc) {
+        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+          return 1;
       }
+    }
+  
+    for (t = 0; t < num_threads; t++){
+      rc = pthread_join(threads[t], NULL);
+      if(rc)
+        fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
+    }
+    free(args);
+  } else {
+    struct newton_method_args args;
+    args.result = &sols[0];
+    args.grid = &grid[0];
+    newton_method((void *) &args);
   }
 
-  for (t = 0; t < num_threads; t++){
-    rc = pthread_join(threads[t], NULL);
-    if(rc)
-      fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
-  }
-
-  printf("Done with calc\n");
+  
+  //printf("Done with calc\n");
 
   write_ppm_attractors(sols, grid_size, colormap, d);
   write_ppm_convergence(sols, grid_size, colormap, d);
 
-  free(args);
   free(grid);
   free(sols);
   for(int i = 0; i < d; i++ ){
