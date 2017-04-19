@@ -166,7 +166,7 @@ void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, 
   int iter_conv;
 
   size_t z = 1;
-  char str2[4];
+  char str2[5];
 
   for (size_t i = 0; i < grid_size * grid_size; i++){
     iter_conv = sols[i].iter_conv;
@@ -175,10 +175,12 @@ void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, 
 
     strcat(for_print, str2);
 
+    memset(str2, 0, sizeof str2);
+
     if (z % grid_size == 0) {
       strcat(for_print, "\n");
       fprintf(fp, "%s", for_print);
-      memset(for_print, 0, grid_size * 4 + 1);
+      memset(for_print, 0, sizeof for_print);
       z = 0;
     }
     z++;
