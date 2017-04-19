@@ -32,6 +32,7 @@ size_t block_size;
 // Global variable to check max iterations to keep convergence ppm in range.
 pthread_mutex_t mutex_max_iter;
 size_t max_iter_glob;
+double d_dbl;
 
 void newton_iterate(double complex *x_0){
 
@@ -56,8 +57,6 @@ void * newton_method(void * pv){
   complex double *true_roots = args->true_roots;
   size_t max_iter = 0;
   complex double x_0;
-  double d_dbl = 2*(double)interval / grid_size;
-  d_dbl += d_dbl/(grid_size-1);
   double re_incr = d_dbl;
   complex double im_incr = d_dbl*I;
 
@@ -243,6 +242,8 @@ int main(int argc, char *argv[]){
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
 
   block_size = grid_size / num_threads;
+  d_dbl = 2*(double)interval / grid_size;
+  d_dbl += d_dbl/(grid_size-1);
 
   complex double true_roots[d];
   find_true_roots(true_roots);
