@@ -74,7 +74,6 @@ void * newton_method(void * pv){
           for(size_t i=0; i<d;i++){
             if (cabs(x_1-true_roots[i]) < TOL_CONV){
               conv = i;
-              //printf("x_1 re, %f tr re %f x_1 im %f tr im %f iter %ld dist: %f i %ld\n",creal(x_1), creal(true_root[i]), cimag(x_1), cimag(true_root[i]) ,iter,cabs(x_1-true_root[i]),i);
             }
           }
         }
@@ -96,7 +95,6 @@ void fill_grid(double complex * grid, size_t grid_size, size_t interval){
   for (size_t i = 0; i < grid_size; i++){
     for (size_t j = 0; j < grid_size; j++){
       grid[i*grid_size + j] = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
-      //printf("real %f imag %f \n",creal(grid[i][j]), cimag(grid[i][j]) );
     }
   }
 }
@@ -112,15 +110,13 @@ void root_color_map(char **colormap, size_t d){
     else
       strcat( colormap[i], "0 ");
     }
-    //printf("Color: %s \n", colormap[i] );
   }
 }
 
 void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, size_t d){
 
   char str[25];
-  sprintf(str, "newton_attractors_x%i.ppm", (int)d);//printf("%s \n",str);
-  printf("%s",str);
+  sprintf(str, "newton_attractors_x%i.ppm", (int)d);
   FILE *fp;
   fp = fopen(str, "w+");
 
@@ -157,8 +153,7 @@ void write_ppm_attractors(newton_res *sols, size_t grid_size, char **colormap, s
 
 void write_ppm_convergence(newton_res *sols, size_t grid_size, char **colormap, size_t d){
   char str[26];
-  sprintf(str, "newton_convergence_x%i.pgm", (int)d);//printf("%s \n",str);
-  printf("%s",str);
+  sprintf(str, "newton_convergence_x%i.pgm", (int)d);
 
   FILE *fp;
   fp = fopen(str, "w+");
@@ -261,8 +256,6 @@ int main(int argc, char *argv[]){
     if(rc)
       fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
   }
-
-  printf("Done with calc\n");
 
   write_ppm_attractors(sols, grid_size, colormap, d);
   write_ppm_convergence(sols, grid_size, colormap, d);
