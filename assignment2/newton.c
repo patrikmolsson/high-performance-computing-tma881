@@ -56,14 +56,14 @@ void * newton_method(void * pv){
   complex double *true_roots = args->true_roots;
   size_t max_iter = 0;
   complex double x_0;
-  double complex incr;
   double d_dbl = 2*(double)interval / grid_size;
   d_dbl += d_dbl/(grid_size-1);
-  incr = d_dbl + d_dbl*I;
+  double re_incr = d_dbl;
+  complex double im_incr = d_dbl*I;
 
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
-      x_0 = (j*creal(incr) - interval) + (i*cimag(incr)*I - interval*I);
+      x_0 = (j*re_incr - interval) + (i*im_incr*I - interval*I);
       //x_0 = grid[i*grid_size+j];
       int conv = -1;
       size_t iter = 0;
