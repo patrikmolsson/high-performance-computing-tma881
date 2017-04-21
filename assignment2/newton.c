@@ -7,7 +7,6 @@
 #include <assert.h>
 #include <pthread.h>
 
-// TODO: root not needed?
 typedef struct{
   int iter_conv;
   int type_conv;
@@ -15,7 +14,6 @@ typedef struct{
 
 struct newton_method_args{
   newton_res *result;
-  double *grid;
   double **true_roots;
   size_t ix;
 };
@@ -34,15 +32,15 @@ pthread_mutex_t mutex_max_iter;
 size_t max_iter_glob;
 
 void newton_iterate(double *x0_re, double *x0_im){
-// Still passing and writing a complex double, could change to just real and imag part.
-// atan2; ensuring principal branch for arg(z).
-double arg = - atan2(*x0_im,*x0_re) *  (d - 1.0f);
-// Magnitude for 1/ ( d x^(d-1) )
-double r_2 = pow( *x0_re* *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
-*x0_re = (1 - 1.0f / d) * *x0_re + r_2 * cos(arg);
-*x0_im = (1 - 1.0f / d) * *x0_im + r_2 *sin(arg);
-// Previous complex double version for reference:
-//*x_0 = (1.0f - 1.0f / d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
+
+  // atan2; ensuring principal branch for arg(z).
+  double arg = - atan2(*x0_im,*x0_re) *  (d - 1.0f);
+  // Magnitude for 1/ ( d x^(d-1) )
+  double r_2 = pow( *x0_re* *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
+  *x0_re = (1 - 1.0f / d) * *x0_re + r_2 * cos(arg);
+  *x0_im = (1 - 1.0f / d) * *x0_im + r_2 *sin(arg);
+  // Previous complex double version for reference:
+  //*x_0 = (1.0f - 1.0f / d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
 }
 
 void find_true_roots(double ** true_root){
@@ -59,19 +57,21 @@ void find_true_roots(double ** true_root){
 
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
-  double *grid = args->grid;
   newton_res* sols = args->result;
   double **true_roots = args->true_roots;
-  size_t max_iter = 0;
-  double x0_re, x0_im;
-  size_t ix = args->ix;
+  size_t max_iter = 0, iter = 0, ix = args->ix;
+  double x0_re, x0_im, x_abs;
+  double incr = 2*(double)interval / grid_size;
+  incr += incr/(grid_size-1);
+  int conv;
+
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
-      x0_re = grid[j];
-      x0_im = grid[i+ix];
-      int conv = -1;
-      size_t iter = 0;
-      double x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
+      x0_re = j*incr - interval;
+      x0_im = (i+ix)*incr - interval;
+      conv = -1;
+      iter = 0;
+      x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
 
       // TODO: Convergence: if abs(x_1) != 1 + eps, keep iterate.
       // Root check: start by checking real values <= always conjugate
@@ -105,15 +105,6 @@ void * newton_method(void * pv){
   }
   pthread_mutex_unlock(&mutex_max_iter);
   return NULL;
-}
-
-void fill_grid(double *grid){
-  //double incr;
-  double incr = 2*(double)interval / grid_size;
-  incr += incr/(grid_size-1);
-  for (size_t i = 0; i < grid_size; i++){
-      grid[i] = (i*incr - interval);
-  }
 }
 
 void root_color_map(char **colormap){
@@ -205,9 +196,9 @@ void write_ppm_convergence(newton_res *sols){
 }
 
 int main(int argc, char *argv[]){
-  double * grid;
   newton_res * sols;
   double ** true_roots;
+  char ** colormap;
 
   char arg[10];
   if (argc > 4)
@@ -230,24 +221,18 @@ int main(int argc, char *argv[]){
       d = (int) strtol(argv[i], NULL, 10);
     }
   }
-  // COLOR MAP INIT
+
   const size_t str_length = 6;
-  char ** colormap;
   //colormap = malloc(d * sizeof *colormap);
   colormap = calloc(d, sizeof *colormap);
+  true_roots = malloc(d * sizeof *true_roots);
+  sols = malloc(grid_size * grid_size * sizeof *sols);
+
   for(int i = 0; i < d; i++ ){
     colormap[i] = calloc(str_length + 1, sizeof *colormap[i]);
-  }
-  root_color_map(colormap);
-  grid = malloc(grid_size * sizeof *grid);
-  sols = malloc(grid_size * grid_size * sizeof *sols);
-  true_roots = malloc(d * sizeof *true_roots);
-
-  for(size_t i = 0; i < d; i++){
     true_roots[i] = malloc(2 * sizeof *true_roots[i]);
   }
-
-  fill_grid(grid);
+  root_color_map(colormap);
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
 
@@ -265,7 +250,6 @@ int main(int argc, char *argv[]){
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
       args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
       args[t].true_roots = true_roots;
-      args[t].grid = grid;
       args[t].ix = ix;
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
@@ -285,7 +269,6 @@ int main(int argc, char *argv[]){
     struct newton_method_args args;
     args.true_roots = true_roots;
     args.result = &sols[0];
-    args.grid = &grid[0];
     args.true_roots = true_roots;
     args.ix = 0;
     newton_method((void *) &args);
@@ -294,14 +277,11 @@ int main(int argc, char *argv[]){
   write_ppm_attractors(sols, colormap);
   write_ppm_convergence(sols);
 
-  free(grid);
-  free(sols);
   for(int i = 0; i < d; i++ ){
     free(colormap[i]);
-  }
-  for(size_t i = 0; i < 2; i++){
     free(true_roots[i]);
   }
+  free(sols);
   free(true_roots);
   free(colormap);
   return 0;
