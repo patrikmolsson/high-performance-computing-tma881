@@ -13,9 +13,10 @@ typedef struct{
 } newton_res;
 
 struct newton_method_args{
-  newton_res *result;
   double **true_roots;
   size_t ix;
+  char *for_print;
+  char **colormap;
 };
 
 static const double TOL_CONV = 1e-3;
@@ -59,8 +60,9 @@ void find_true_roots(double ** true_root){
 
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
-  newton_res* sols = args->result;
   double **true_roots = args->true_roots;
+  char *for_print  = args->for_print;
+  char **colormap = args->colormap;
   size_t max_iter = 0, iter = 0, ix = args->ix;
   double x0_re, x0_im, x_abs;
   double incr = 2*(double)interval / grid_size;
@@ -97,8 +99,12 @@ void * newton_method(void * pv){
       if(iter > max_iter){
         max_iter = iter;
       }
-      sols[i*grid_size+j].iter_conv = iter;
-      sols[i*grid_size+j].type_conv = conv;
+      //sols[i*grid_size+j].iter_conv = iter;
+      //sols[i*grid_size+j].type_conv = conv;
+      strcat(for_print, colormap[conv]);
+      if (j+1 % grid_size == 0) {
+        strcat(for_print, "\n");
+      }
     }
   }
   pthread_mutex_lock(&mutex_max_iter);
@@ -201,6 +207,7 @@ int main(int argc, char *argv[]){
   newton_res * sols;
   double ** true_roots;
   char ** colormap;
+  char ** for_print;
 
   char arg[10];
   if (argc > 4)
@@ -251,12 +258,17 @@ int main(int argc, char *argv[]){
 
     int rc;
     size_t t,ix; //Wanted cool double index, seems to require external prealloc.
-    for(size_t i = 0; i < n_chunks; i++){
-      sols = malloc(grid_size * block_size * sizeof *sols*num_threads); // Eventuelly + nchunks NOT FREED YET!
+    for(size_t n = 0; n < n_chunks; n++){
+      for_print = malloc(num_threads * sizeof *for_print);
+      for(size_t j = 0; j <num_threads; j++){
+        for_print[j] = malloc(grid_size * block_size * 6 *sizeof *for_print[j]+1);
+      }
       for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
-        args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
+        //args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
         args[t].true_roots = true_roots;
         args[t].ix = ix;
+        args[t].for_print = &for_print[t][0];
+        args[t].colormap = colormap;
         printf("ix%lu\n",ix);
         rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
         if(rc) {
@@ -265,21 +277,31 @@ int main(int argc, char *argv[]){
         }
         printf("thread %lu block size%lu\n",t,block_size);
       }
-      free(sols);
+      char str[25];
+      sprintf(str, "newton_attractors_x%i.ppm", (int)d);
+      FILE *fp = fopen(str,"w+");
+      fprintf(fp, "P3\n");
+      fprintf(fp, "%ld %ld\n", grid_size, grid_size);
+      fprintf(fp, "%d\n", 1);
       for (t = 0; t < num_threads; t++){
         rc = pthread_join(threads[t], NULL);
+        fprintf(fp, "%s\n", for_print[t]);
         printf("thread %lu\n",t);
         if(rc)
           fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
       }
       pthread_mutex_destroy(&mutex_max_iter);
+      for(int t = 0; t < num_threads; t++ ){
+        free(for_print[t]);
+      }
+      free(for_print);
     }
     free(args);
   } else {
     sols = malloc(grid_size * grid_size * sizeof *sols);
     struct newton_method_args args;
     args.true_roots = true_roots;
-    args.result = &sols[0];
+    //args.result = &sols[0];
     args.true_roots = true_roots;
     args.ix = 0;
     newton_method((void *) &args);
