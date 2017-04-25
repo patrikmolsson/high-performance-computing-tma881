@@ -11,7 +11,7 @@ static const double max_dist = 34.64f;
 void read_cells(){
   size_t lines = 0, n_coords = 3, fac = 100;
   char ch = 0;
-  FILE *fp = fopen("cell_e5", "r");
+  FILE *fp = fopen("cells", "r");
   double dist;
   while(!feof(fp))
   {
@@ -34,9 +34,10 @@ void read_cells(){
     //printf("%lf %lf %lf \n", cell_array[i][0], cell_array[i][1], cell_array[i][2]);
   }
   fclose(fp);
-  #pragma omp parallel for collapse(2)
-  for(size_t i = 0; i<lines; i++){
-    for(size_t j = i + 1; j<lines; j++){
+  size_t i,j;
+  #pragma omp parallel for private(j)
+  for(i = 0; i<lines; i++){
+    for(j = i + 1; j<lines; j++){
       dist = sqrt((cell_array[i][0]-cell_array[j][0])*
                   (cell_array[i][0]-cell_array[j][0])+
                   (cell_array[i][1]-cell_array[j][1])*
