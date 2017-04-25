@@ -2,7 +2,8 @@ SOURCE = cell_distances.c
 OUTPUT = cell_distances
 CC = gcc
 LIBS =  -lm
-OPTIM = -O0
+OPTIM = -O3
+OTHERFLAGS = -Wall -fopenmp
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
 
@@ -11,7 +12,7 @@ CFLAGSGC = -fprofile-arcs -ftest-coverage
 all : main
 
 main : $(SOURCE)
-	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) -Wall
+	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) $(OTHERFLAGS)
 
 $(OBJS) : $(SOURCE)
 
