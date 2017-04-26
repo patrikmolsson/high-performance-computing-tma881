@@ -101,9 +101,11 @@ void * newton_method(void * pv){
       }
       //sols[i*grid_size+j].iter_conv = iter;
       //sols[i*grid_size+j].type_conv = conv;
-      strcat(for_print, colormap[conv]);
-      if (j+1 % grid_size == 0) {
-        strcat(for_print, "\n");
+      for (size_t k = 0; k <6; k++){
+        for_print[i*(grid_size*6+1)+j*6+k]= colormap[conv][k];
+      }
+      if ((j+1) % grid_size == 0) {
+        strcat(for_print, "\n");//TODO: FIX INDEX
       }
     }
   }
@@ -266,9 +268,9 @@ int main(int argc, char *argv[]){
     int rc;
     size_t t,ix; //Wanted cool double index, seems to require external prealloc.
     for(size_t n = 0; n < n_chunks; n++){
-      for_print = malloc(num_threads * sizeof *for_print);
+      for_print = malloc(num_threads * sizeof(char*));
       for(size_t j = 0; j <num_threads; j++){
-        for_print[j] = malloc(grid_size * block_size * 6 *sizeof *for_print[j]+1);
+        for_print[j] = malloc(grid_size * (block_size+1) * 6);
       }
       for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
         //args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
