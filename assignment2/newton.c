@@ -19,9 +19,14 @@ struct newton_method_args{
   double **true_roots;
 };
 
+struct write_method_args{
+  FILE *fp;
+  char **for_print;
+};
+
 static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
-static const size_t CHUNK_SIZE = 50e6;
+static const size_t CHUNK_SIZE = 50e5;
 static const size_t interval = 2;
 
 // Init with default valuesm
@@ -32,6 +37,11 @@ size_t num_threads = 3;
 size_t block_size;
 // Global variable to check max iterations to keep convergence ppm in range.
 pthread_mutex_t mutex_max_iter;
+
+int running_thread_write = 0;
+pthread_mutex_t run_lock_write = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t run_cond_write = PTHREAD_COND_INITIALIZER;
+
 size_t max_iter_glob;
 
 void newton_iterate(double *x0_re, double *x0_im){
@@ -109,11 +119,31 @@ void * newton_method(void * pv){
       }
     }
   }
-  pthread_mutex_lock(&mutex_max_iter);
+  //pthread_mutex_lock(&mutex_max_iter);
   if(max_iter > max_iter_glob){
     max_iter_glob = max_iter;
   }
-  pthread_mutex_unlock(&mutex_max_iter);
+  //pthread_mutex_unlock(&mutex_max_iter);
+  return NULL;
+}
+
+
+void * write_method(void * pv){
+  struct write_method_args *args = pv;
+  char ** for_print = args->for_print;
+  FILE *fp = args->fp;
+  // TODO Free pv and args?
+  //
+
+  //pthread_mutex_lock(&run_lock_write);
+  //running_thread_write = 1;
+  for (size_t i = 0; i < num_threads; i++) {
+    fprintf(fp, "%s", for_print[i]);
+  }
+  //running_thread_write = 0;
+  //pthread_cond_signal(&run_cond_write);
+  //pthread_mutex_unlock(&run_lock_write);
+
   return NULL;
 }
 
@@ -208,7 +238,7 @@ void write_ppm_convergence(newton_res *sols){
 int main(int argc, char *argv[]){
   double ** true_roots;
   char ** colormap;
-  char ** for_print;
+  char *** for_print;
 
   char arg[10];
   if (argc > 4)
@@ -264,49 +294,68 @@ int main(int argc, char *argv[]){
   fprintf(fp, "%ld %ld\n", grid_size, grid_size);
   fprintf(fp, "%d\n", 1);
 
-  pthread_mutex_init(&mutex_max_iter, NULL);
+  //pthread_mutex_init(&mutex_max_iter, NULL);
   pthread_t threads[num_threads];
+  pthread_t write_thread;
   struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
+  struct write_method_args write_args;
+
+  write_args.fp = fp;
 
   int rc;
   size_t t,ix; //Wanted cool double index, seems to require external prealloc.
+  for_print = malloc(2 * sizeof(char**));
+  for_print[0] = malloc(num_threads * sizeof(char*));
+  for_print[1] = malloc(num_threads * sizeof(char*));
+
   for(size_t n = 0; n < n_chunks; n++){
     if (n == n_chunks-1 && hasRemainder == 1) {
       block_size = block_size - 1;
     }
 
-    for_print = malloc(num_threads * sizeof(char*));
+    // Allocate memory to the for_print we will write to
     for(size_t j = 0; j <num_threads; j++){
-      for_print[j] = malloc(grid_size * (block_size+1) * 6);
+      for_print[n%2][j] = malloc(grid_size * (block_size+1) * 6);
     }
+
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
-      //args[t].result = &sols[ix*grid_size]; // Send in pointers to first element in grid and sols blocks and then access all other elements relative to the starting value.
       args[t].true_roots = true_roots;
       args[t].ix = ix + n*num_threads*block_size;
-      args[t].for_print = &for_print[t][0];
+      args[t].for_print = &for_print[n%2][t][0];
       args[t].colormap = colormap;
-      //printf("ix%lu\n",ix);
+
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
           return 1;
       }
-      //printf("thread %lu block size%lu\n",t,block_size);
     }
     for (t = 0; t < num_threads; t++){
       rc = pthread_join(threads[t], NULL);
-      fprintf(fp, "%s\n", for_print[t]);
-      //printf("thread %lu\n",t);
+
       if(rc)
         fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
     }
-    pthread_mutex_destroy(&mutex_max_iter);
-    for(int t = 0; t < num_threads; t++ ){
-      free(for_print[t]);
-    }
-    free(for_print);
 
+    if(n > 0){
+      pthread_join(write_thread, NULL);
+    }
+
+    write_args.for_print = for_print[n%2];
+    pthread_create(&write_thread, NULL, &write_method, (void *)&write_args);
   }
+
+  pthread_join(write_thread, NULL);
+
+
+  for(int t = 0; t < num_threads; t++ ){
+    free(for_print[0][t]);
+    free(for_print[1][t]);
+  }
+
+  free(for_print[0]);
+  free(for_print[1]);
+  free(for_print);
   free(args);
 
   fclose(fp);
