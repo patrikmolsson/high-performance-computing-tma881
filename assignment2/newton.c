@@ -71,6 +71,7 @@ void find_true_roots(double ** true_root){
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
   double **true_roots = args->true_roots;
+  char *colstr;
   char *for_print  = args->for_print;
   char **colormap = args->colormap;
   size_t max_iter = 0, iter = 0, ix = args->ix;
@@ -111,11 +112,17 @@ void * newton_method(void * pv){
       }
       //sols[i*grid_size+j].iter_conv = iter;
       //sols[i*grid_size+j].type_conv = conv;
-      for (size_t k = 0; k <6; k++){
-        for_print[i*(grid_size*6+1)+j*6+k]= colormap[conv][k];
+      if (conv > -1)
+        colstr = colormap[conv];
+      else
+        colstr = "1 1 1 ";
+
+      for (size_t k = 0; k < 6; k++){
+        for_print[i*(grid_size*6+1)+j*6+k] = colstr[k];
       }
+
       if ((j+1) % grid_size == 0) {
-        strcat(for_print, "\n");//TODO: FIX INDEX
+        for_print[i*(grid_size*6+1)+j*6+6] = '\n';
       }
     }
   }
