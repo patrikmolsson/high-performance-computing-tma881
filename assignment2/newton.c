@@ -251,6 +251,13 @@ int main(int argc, char *argv[]){
 
   find_true_roots(true_roots);
 
+  char str[25];
+  sprintf(str, "newton_attractors_x%i.ppm", (int)d);
+  FILE *fp = fopen(str,"w+");
+  fprintf(fp, "P3\n");
+  fprintf(fp, "%ld %ld\n", grid_size, grid_size);
+  fprintf(fp, "%d\n", 1);
+
   if(num_threads > 1) {
     pthread_mutex_init(&mutex_max_iter, NULL);
     pthread_t threads[num_threads];
@@ -277,12 +284,6 @@ int main(int argc, char *argv[]){
         }
         printf("thread %lu block size%lu\n",t,block_size);
       }
-      char str[25];
-      sprintf(str, "newton_attractors_x%i.ppm", (int)d);
-      FILE *fp = fopen(str,"w+");
-      fprintf(fp, "P3\n");
-      fprintf(fp, "%ld %ld\n", grid_size, grid_size);
-      fprintf(fp, "%d\n", 1);
       for (t = 0; t < num_threads; t++){
         rc = pthread_join(threads[t], NULL);
         fprintf(fp, "%s\n", for_print[t]);
@@ -307,6 +308,8 @@ int main(int argc, char *argv[]){
     newton_method((void *) &args);
     free(sols);
   }
+
+  fclose(fp);
 
   //write_ppm_attractors(sols, colormap);
   //write_ppm_convergence(sols);
