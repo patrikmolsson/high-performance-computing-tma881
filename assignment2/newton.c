@@ -139,17 +139,12 @@ void * write_method(void * pv){
   struct write_method_args *args = pv;
   char ** for_print = args->for_print;
   FILE *fp = args->fp;
-  // TODO Free pv and args?
-  //
+  // TODO Free pv and args? NOT pv! It is being used later
 
-  //pthread_mutex_lock(&run_lock_write);
-  //running_thread_write = 1;
   for (size_t i = 0; i < num_threads; i++) {
     fprintf(fp, "%s", for_print[i]);
   }
-  //running_thread_write = 0;
-  //pthread_cond_signal(&run_cond_write);
-  //pthread_mutex_unlock(&run_lock_write);
+
 
   return NULL;
 }
@@ -314,6 +309,10 @@ int main(int argc, char *argv[]){
   for_print = malloc(2 * sizeof(char**));
   for_print[0] = malloc(num_threads * sizeof(char*));
   for_print[1] = malloc(num_threads * sizeof(char*));
+  for(size_t j = 0; j < num_threads; j++){
+    for_print[0][j] = malloc(grid_size * (block_size + 1) * 6);
+    for_print[1][j] = malloc(grid_size * (block_size + 1) * 6);
+  }
 
   for(size_t n = 0; n < n_chunks; n++){
     if (n == n_chunks-1 && hasRemainder == 1) {
@@ -321,14 +320,11 @@ int main(int argc, char *argv[]){
     }
 
     // Allocate memory to the for_print we will write to
-    for(size_t j = 0; j <num_threads; j++){
-      for_print[n%2][j] = malloc(grid_size * (block_size+1) * 6);
-    }
 
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
       args[t].true_roots = true_roots;
       args[t].ix = ix + n*num_threads*block_size;
-      args[t].for_print = &for_print[n%2][t][0];
+      args[t].for_print = &for_print[n % 2][t][0];
       args[t].colormap = colormap;
 
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
@@ -344,20 +340,20 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "error: pthread_join, rc: %d \n", rc);
     }
 
+    // If there has been writing, wait for that thread to finish before continuing
     if(n > 0){
       pthread_join(write_thread, NULL);
     }
 
-    write_args.for_print = for_print[n%2];
+    write_args.for_print = for_print[n % 2];
     pthread_create(&write_thread, NULL, &write_method, (void *)&write_args);
   }
 
   pthread_join(write_thread, NULL);
 
-
-  for(int t = 0; t < num_threads; t++ ){
-    free(for_print[0][t]);
-    free(for_print[1][t]);
+  for(size_t j = 0; j < num_threads; j++){
+    free(for_print[0][j]);
+    free(for_print[1][j]);
   }
 
   free(for_print[0]);
@@ -371,7 +367,6 @@ int main(int argc, char *argv[]){
     free(colormap[i]);
     free(true_roots[i]);
   }
-  //free(sols);
   free(true_roots);
   free(colormap);
 
