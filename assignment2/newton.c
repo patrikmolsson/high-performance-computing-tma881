@@ -278,8 +278,11 @@ int main(int argc, char *argv[]){
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
   n_chunks = ceil((float) grid_size*(grid_size * 6 + 1) / CHUNK_SIZE);
 
-  //block_size = grid_size*grid_size / (n_chunks * num_threads); //ROUNDING ERRORs mby
   block_size = ceil((float) grid_size / (n_chunks * num_threads));
+
+  if (n_chunks * num_threads * block_size > grid_size) {
+    n_chunks = ceil((float)grid_size / (num_threads * block_size));
+  }
   printf("nchunk %lu block_size %lu \n",n_chunks,block_size);
 
   find_true_roots(true_roots);
