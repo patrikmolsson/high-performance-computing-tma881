@@ -77,6 +77,7 @@ void * newton_method(void * pv){
   size_t max_iter = 0, iter = 0, ix = args->ix;
   double x0_re, x0_im, x_abs;
   double incr = 2*(double)interval / grid_size;
+  double arg,r_2;
   incr += incr/(grid_size-1);
   int conv;
 
@@ -95,7 +96,11 @@ void * newton_method(void * pv){
           && fabs(x0_re) < TOL_DIV
           && fabs(x0_im) < TOL_DIV ){
 
-          newton_iterate(&x0_re,&x0_im);
+          //newton_iterate(&x0_re,&x0_im);
+          arg = - atan2(x0_im,x0_re) *  (d - 1.0f);
+          r_2 = pow(x0_re* x0_re + x0_im * x0_im , (1.0f-d)/2 ) / ( d*1.0f );
+          x0_re = (1 - 1.0f / d) * x0_re + r_2 * cos(arg);
+          x0_im = (1 - 1.0f / d) * x0_im + r_2 * sin(arg);
           x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
 
         if (fabs(1.0f - x_abs) < TOL_CONV ) {
