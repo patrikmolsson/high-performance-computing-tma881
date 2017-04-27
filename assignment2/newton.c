@@ -315,6 +315,8 @@ int main(int argc, char *argv[]){
   for(size_t j = 0; j < num_threads; j++){
     for_print[0][j] = malloc(grid_size * (block_size + 1) * 6);
     for_print[1][j] = malloc(grid_size * (block_size + 1) * 6);
+    args[j].true_roots = true_roots;
+    args[j].colormap = colormap;
   }
 
   for(size_t n = 0; n < n_chunks; n++){
@@ -325,10 +327,8 @@ int main(int argc, char *argv[]){
     // Allocate memory to the for_print we will write to
 
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
-      args[t].true_roots = true_roots;
       args[t].ix = ix + n*num_threads*block_size;
       args[t].for_print = &for_print[n % 2][t][0];
-      args[t].colormap = colormap;
 
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
@@ -353,6 +353,7 @@ int main(int argc, char *argv[]){
   }
 
   pthread_join(write_thread, NULL);
+  fclose(fp);
 
   for(size_t j = 0; j < num_threads; j++){
     free(for_print[0][j]);
@@ -363,8 +364,6 @@ int main(int argc, char *argv[]){
   free(for_print[1]);
   free(for_print);
   free(args);
-
-  fclose(fp);
 
   for(int i = 0; i < d; i++ ){
     free(colormap[i]);
