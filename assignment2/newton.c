@@ -15,7 +15,8 @@ typedef struct{
 struct newton_method_args{
   size_t ix;
   char **colormap;
-  char *for_print;
+  char *for_print_attr;
+  char *for_print_conv;
   double **true_roots;
 };
 
@@ -28,6 +29,7 @@ static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
 static const size_t CHUNK_SIZE = 50e5;
 static const size_t interval = 2;
+static const size_t MAX_ITER = 999;
 
 // Init with default valuesm
 size_t n_chunks;
@@ -36,13 +38,13 @@ size_t grid_size = 1000;
 size_t num_threads = 3;
 size_t block_size;
 // Global variable to check max iterations to keep convergence ppm in range.
-pthread_mutex_t mutex_max_iter;
+//pthread_mutex_t mutex_max_iter;
 
-int running_thread_write = 0;
-pthread_mutex_t run_lock_write = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t run_cond_write = PTHREAD_COND_INITIALIZER;
+//int running_thread_write = 0;
+//pthread_mutex_t run_lock_write = PTHREAD_MUTEX_INITIALIZER;
+//pthread_cond_t run_cond_write = PTHREAD_COND_INITIALIZER;
 
-size_t max_iter_glob;
+//size_t max_iter_glob;
 
 void newton_iterate(double *x0_re, double *x0_im){
 
@@ -67,14 +69,13 @@ void find_true_roots(double ** true_root){
   }
 }
 
-
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
   double **true_roots = args->true_roots;
   char *colstr;
-  char *for_print  = args->for_print;
+  char *for_print_attr  = args->for_print_attr;
   char **colormap = args->colormap;
-  size_t max_iter = 0, iter = 0, ix = args->ix;
+  size_t  iter = 0, ix = args->ix;
   double x0_re, x0_im, x_abs;
   double incr = 2*(double)interval / grid_size;
   double arg,r_2;
@@ -112,30 +113,21 @@ void * newton_method(void * pv){
         }
         iter++;
       }
-      if(iter > max_iter){
-        max_iter = iter;
-      }
-      //sols[i*grid_size+j].iter_conv = iter;
-      //sols[i*grid_size+j].type_conv = conv;
+
       if (conv > -1)
         colstr = colormap[conv];
       else
         colstr = "1 1 1 ";
 
       for (size_t k = 0; k < 6; k++){
-        for_print[i*(grid_size*6+1)+j*6+k] = colstr[k];
+        for_print_attr[i*(grid_size*6+1)+j*6+k] = colstr[k];
       }
 
       if ((j+1) % grid_size == 0) {
-        for_print[i*(grid_size*6+1)+j*6+6] = '\n';
+        for_print_attr[i*(grid_size*6+1)+j*6+6] = '\n';
       }
     }
   }
-  //pthread_mutex_lock(&mutex_max_iter);
-  if(max_iter > max_iter_glob){
-    max_iter_glob = max_iter;
-  }
-  //pthread_mutex_unlock(&mutex_max_iter);
   return NULL;
 }
 
@@ -168,84 +160,11 @@ void root_color_map(char **colormap){
   }
 }
 
-void write_ppm_attractors(newton_res *sols, char **colormap){
-
-  char str[25];
-  sprintf(str, "newton_attractors_x%i.ppm", (int)d);
-  FILE *fp;
-  fp = fopen(str, "w+");
-
-  fprintf(fp, "P3\n");
-  fprintf(fp, "%ld %ld\n", grid_size, grid_size);
-  fprintf(fp, "%d\n", 1);
-
-  char for_print[grid_size * 6 + 1];
-  int type_of_conv;
-
-  size_t col = 1;
-
-  for (size_t i = 0; i < grid_size * grid_size; i++){
-    type_of_conv = sols[i].type_conv;
-
-    if(type_of_conv >= 0 && type_of_conv <= d-1){
-      strcat(for_print, colormap[type_of_conv]);
-    }
-    else{
-      strcat(for_print, "1 1 1 ");
-    }
-
-    if (col % grid_size == 0) {
-      strcat(for_print, "\n");
-      fprintf(fp, "%s", for_print);
-      memset(for_print, 0, grid_size * 6 + 1);
-      col = 0;
-    }
-    col++;
-  }
-  fclose(fp);
-}
-
-void write_ppm_convergence(newton_res *sols){
-  char str[26];
-  sprintf(str, "newton_convergence_x%i.pgm", (int)d);
-
-  FILE *fp;
-  fp = fopen(str, "w+");
-
-  fprintf(fp, "P2\n");
-  fprintf(fp, "%ld %ld\n", grid_size, grid_size);
-  fprintf(fp, "%zu\n", max_iter_glob);
-
-  char for_print[grid_size * 4 + 1];
-  size_t iter_conv;
-
-  size_t z = 1;
-  char str2[5];
-
-  for (size_t i = 0; i < grid_size * grid_size; i++){
-    iter_conv = sols[i].iter_conv;
-
-    sprintf(str2, "%zu ", max_iter_glob - iter_conv);
-
-    strcat(for_print, str2);
-
-    memset(str2, 0, sizeof str2);
-
-    if (z % grid_size == 0) {
-      strcat(for_print, "\n");
-      fprintf(fp, "%s", for_print);
-      memset(for_print, 0, sizeof for_print);
-      z = 0;
-    }
-    z++;
-  }
-  fclose(fp);
-}
-
 int main(int argc, char *argv[]){
   double ** true_roots;
   char ** colormap;
-  char *** for_print;
+  char *** for_print_attr;
+  char *** for_print_conv;
 
   char arg[10];
   if (argc > 4)
@@ -297,29 +216,39 @@ int main(int argc, char *argv[]){
   if ((n_chunks * grid_size) % block_size > 0)
     hasRemainder = 1;
 
-  char str[25];
+  char str[26];
   sprintf(str, "newton_attractors_x%i.ppm", (int)d);
-  FILE *fp = fopen(str,"w+");
-  fprintf(fp, "P3\n");
-  fprintf(fp, "%ld %ld\n", grid_size, grid_size);
-  fprintf(fp, "%d\n", 1);
+  FILE *fp_attr = fopen(str,"w+");
+  fprintf(fp_attr, "P3\n");
+  fprintf(fp_attr, "%ld %ld\n", grid_size, grid_size);
+  fprintf(fp_attr, "%d\n", 1);
+
+  sprintf(str, "newton_convergence_x%i.pgm", (int)d);
+
+  FILE *fp_conv = fopen(str, "w+");
+
+  fprintf(fp_conv, "P2\n");
+  fprintf(fp_conv, "%ld %ld\n", grid_size, grid_size);
+  fprintf(fp_conv, "%zu\n", MAX_ITER);
 
   //pthread_mutex_init(&mutex_max_iter, NULL);
   pthread_t threads[num_threads];
   pthread_t write_thread;
   struct newton_method_args *args = malloc(num_threads * sizeof (struct newton_method_args));
-  struct write_method_args write_args;
+  struct write_method_args write_args_attr;
+  struct write_method_args write_args_conv;
 
-  write_args.fp = fp;
+  write_args_attr.fp = fp_attr;
+  write_args_conv.fp = fp_conv;
 
   int rc;
   size_t t,ix; //Wanted cool double index, seems to require external prealloc.
-  for_print = malloc(2 * sizeof(char**));
-  for_print[0] = malloc(num_threads * sizeof(char*));
-  for_print[1] = malloc(num_threads * sizeof(char*));
+  for_print_attr = malloc(2 * sizeof(char**));
+  for_print_attr[0] = malloc(num_threads * sizeof(char*));
+  for_print_attr[1] = malloc(num_threads * sizeof(char*));
   for(size_t j = 0; j < num_threads; j++){
-    for_print[0][j] = malloc(grid_size * (block_size + 1) * 6);
-    for_print[1][j] = malloc(grid_size * (block_size + 1) * 6);
+    for_print_attr[0][j] = malloc(grid_size * (block_size + 1) * 6);
+    for_print_attr[1][j] = malloc(grid_size * (block_size + 1) * 6);
     args[j].true_roots = true_roots;
     args[j].colormap = colormap;
   }
@@ -333,7 +262,7 @@ int main(int argc, char *argv[]){
 
     for (t = 0, ix = 0; t < num_threads; t++, ix += block_size){
       args[t].ix = ix + n*num_threads*block_size;
-      args[t].for_print = &for_print[n % 2][t][0];
+      args[t].for_print_attr = &for_print_attr[n % 2][t][0];
 
       rc = pthread_create(&threads[t], NULL, &newton_method, &args[t]);
       if(rc) {
@@ -353,21 +282,22 @@ int main(int argc, char *argv[]){
       pthread_join(write_thread, NULL);
     }
 
-    write_args.for_print = for_print[n % 2];
-    pthread_create(&write_thread, NULL, &write_method, (void *)&write_args);
+    write_args_attr.for_print = for_print_attr[n % 2];
+    pthread_create(&write_thread, NULL, &write_method, (void *)&write_args_attr);
   }
 
   pthread_join(write_thread, NULL);
-  fclose(fp);
+  fclose(fp_attr);
+  fclose(fp_conv);
 
   for(size_t j = 0; j < num_threads; j++){
-    free(for_print[0][j]);
-    free(for_print[1][j]);
+    free(for_print_attr[0][j]);
+    free(for_print_attr[1][j]);
   }
 
-  free(for_print[0]);
-  free(for_print[1]);
-  free(for_print);
+  free(for_print_attr[0]);
+  free(for_print_attr[1]);
+  free(for_print_attr);
   free(args);
 
   for(int i = 0; i < d; i++ ){
