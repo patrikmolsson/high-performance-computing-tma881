@@ -6,7 +6,7 @@
 
 size_t n_threads;
 static const size_t max_pos = 3465;
-static const double max_dist = 34.64f;
+static const float max_dist = 34.64f;
 static const size_t fac = 100;
 
 void read_cells(){
