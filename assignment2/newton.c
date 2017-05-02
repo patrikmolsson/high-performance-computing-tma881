@@ -45,7 +45,7 @@ void newton_iterate(double *x0_re, double *x0_im){
   // Magnitude for 1/ ( d x^(d-1) )
   double r_2 = pow( *x0_re* *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
   *x0_re = (1 - 1.0f / d) * *x0_re + r_2 * cos(arg);
-  *x0_im = (1 - 1.0f / d) * *x0_im + r_2 *sin(arg);
+  *x0_im = (1 - 1.0f / d) * *x0_im + r_2 * sin(arg);
   // Previous complex double version for reference:
   //*x_0 = (1.0f - 1.0f / d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
 }
@@ -119,12 +119,14 @@ void * newton_method(void * pv){
         for_print_attr[i*(grid_size*6+1)+j*6+k] = colstr[k];
       }
 
-      if (iter < 10){
-        sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "00%lu ", iter);
-      } else if(iter >= 10 && iter < 100){
-        sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "0%lu ", iter);
+      if (iter < 900){
+        sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "%lu ", MAX_ITER-iter);
       } else {
-        sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "%lu ", iter);
+        if( iter < 990){
+          sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "0%lu ", MAX_ITER-iter);
+        } else{
+          sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "00%lu ", MAX_ITER-iter);
+        }
       }
 
       if ((j+1) % grid_size == 0) {
@@ -149,7 +151,6 @@ void * write_method(void * pv){
     fprintf(fp_attr, "%s", for_print_attr[i]);
     fprintf(fp_conv, "%s", for_print_conv[i]);
   }
-
 
   return NULL;
 }
