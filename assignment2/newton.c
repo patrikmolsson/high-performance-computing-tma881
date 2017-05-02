@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <complex.h>
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
-#include <assert.h>
 #include <pthread.h>
 
 typedef struct{

@@ -2,7 +2,7 @@ SOURCE = newton.c
 OUTPUT = newton
 CC = gcc
 LIBS = -pthread -lm
-OPTIM = -Ofast
+OPTIM = -Ofast -march=native
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
 
