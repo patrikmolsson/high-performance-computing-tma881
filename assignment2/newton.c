@@ -232,7 +232,7 @@ int main(int argc, char *argv[]){
   fprintf(fp_attr, "%ld %ld\n", grid_size, grid_size);
   fprintf(fp_attr, "%d\n", 1);
 
-  sprintf(str, "newton_convergence_x%i.pgm", (int)d);
+  sprintf(str, "newton_convergence_x%i.ppm", (int)d);
   FILE *fp_conv = fopen(str, "w+");
   fprintf(fp_conv, "P2\n");
   fprintf(fp_conv, "%ld %ld\n", grid_size, grid_size);
