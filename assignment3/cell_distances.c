@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <omp.h>
+#include <malloc.h>
 
 size_t n_threads;
 static const size_t max_pos = 3465;
@@ -12,11 +13,11 @@ static const size_t fac = 100;
 void read_cells(){
   size_t lines = 0, n_coords = 3,i,j;
   float dist;
-  //char* filename = "cell_e5";
-  char* filename = "cell_e4";
+  char* filename = "cell_e5";
+  //char* filename = "cell_e4";
   //char* filename = "cells";
-  size_t *count_array;
-  float *cell_array;
+  //size_t *count_array;
+  //float *cell_array;
 
   FILE *fp = fopen(filename, "r");
   if (!strcmp(filename,"cell_e5")){
@@ -38,9 +39,9 @@ void read_cells(){
   }
   rewind(fp);*/
   //count_array = calloc(max_pos, sizeof*count_array);
-  count_array = memalign(sizeof *count_array, max_pos * sizeof*count_array);
+  size_t * count_array = memalign(sizeof(size_t), max_pos * sizeof*count_array);
   //cell_array = calloc(lines * n_coords, sizeof *cell_array);
-  cell_array = memalign(sizeof *cell_array, lines * n_coords * sizeof *cell_array);
+  float * cell_array = memalign(sizeof(float), lines * n_coords * sizeof *cell_array);
 
   for(size_t i = 0; i<lines*n_coords; i+=n_coords){
     fscanf(fp, "%f %f %f", &cell_array[i], &cell_array[i+1], &cell_array[i+2]);
