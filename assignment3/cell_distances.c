@@ -13,8 +13,8 @@ void read_cells(){
   size_t lines = 0, n_coords = 3,i,j;
   float dist;
   //char* filename = "cell_e5";
-  //char* filename = "cell_e4";
-  char* filename = "cells";
+  char* filename = "cell_e4";
+  //char* filename = "cells";
   size_t *count_array;
   float *cell_array;
 
@@ -49,7 +49,7 @@ void read_cells(){
   //for(size_t i = 0; i<lines*n_coords; i+=n_coords){
   //  printf("%f %f %f \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
   //}
-  #pragma omp parallel for private(i,j,dist) shared(cell_array,count_array) num_threads(n_threads)
+  #pragma omp parallel for private(i,j,dist) shared(cell_array,count_array)
   for(i = 0; i<lines*n_coords; i+=n_coords){
     for(j = i + n_coords; j<lines*n_coords; j+=n_coords){
       dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
