@@ -37,8 +37,10 @@ void read_cells(){
     }
   }
   rewind(fp);*/
-  count_array = calloc(max_pos, sizeof*count_array);
-  cell_array = calloc(lines * n_coords, sizeof *cell_array);
+  //count_array = calloc(max_pos, sizeof*count_array);
+  count_array = memalign(sizeof *count_array, max_pos * sizeof*count_array);
+  //cell_array = calloc(lines * n_coords, sizeof *cell_array);
+  cell_array = memalign(sizeof *cell_array, lines * n_coords * sizeof *cell_array);
 
   for(size_t i = 0; i<lines*n_coords; i+=n_coords){
     fscanf(fp, "%f %f %f", &cell_array[i], &cell_array[i+1], &cell_array[i+2]);
