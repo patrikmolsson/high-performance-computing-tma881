@@ -29,7 +29,7 @@ static const double TOL_CONV = 1e-3;
 static const double TOL_DIV = 10e10;
 static const size_t CHUNK_SIZE = 50e5;
 static const size_t interval = 2;
-static const size_t MAX_ITER = 999;
+//static const size_t MAX_ITER = 999;
 
 // Init with default valuesm
 size_t n_chunks;
@@ -38,6 +38,8 @@ size_t grid_size = 1000;
 size_t num_threads = 3;
 size_t block_size;
 void (*newton_pointer)( double*, double*);
+size_t max_iters_deg[8] = {1,14,49,185,123,197,290,450};
+size_t max_iter;
 // Global variable to check max iterations to keep convergence ppm in range.
 pthread_mutex_t mutex_max_iter;
 
@@ -45,7 +47,7 @@ int running_thread_write = 0;
 pthread_mutex_t run_lock_write = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t run_cond_write = PTHREAD_COND_INITIALIZER;
 
-size_t max_iter_glob;
+size_t max_iter_glob = 0;
 
 void newton_iterate1(double *x0_re, double *x0_im){
 
@@ -96,6 +98,7 @@ void * newton_method(void * pv){
   double incr = 2*(double)interval / grid_size;
   incr += incr/(grid_size-1);
   int conv;
+  size_t max_iter_loc = 0;
 
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
@@ -108,12 +111,12 @@ void * newton_method(void * pv){
       // TODO: Convergence: if abs(x_1) != 1 + eps, keep iterate.
       // Root check: start by checking real values <= always conjugate
       while(conv == -1
-          && x_abs > TOL_CONV
-          && fabs(x0_re) < TOL_DIV
-          && fabs(x0_im) < TOL_DIV ){
-
-          (*newton_pointer)(&x0_re,&x0_im);
-          x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
+        && x_abs > TOL_CONV
+        && fabs(x0_re) < TOL_DIV
+        && fabs(x0_im) < TOL_DIV ){
+        (*newton_pointer)(&x0_re,&x0_im);
+        //newton_iterate1(&x0_re,&x0_im);  
+        x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
 
         if (fabs(1.0f - x_abs) < TOL_CONV ) {
           for(size_t k=0; k<d;k++){
@@ -130,29 +133,28 @@ void * newton_method(void * pv){
       else
         colstr = "1 1 1 ";
 
-      if(iter > MAX_ITER)
-        iter = MAX_ITER;
+      if(iter > max_iter)
+        iter = max_iter;
+
+      if(iter > max_iter_loc)
+        max_iter_loc = iter;
 
       for (size_t k = 0; k < 6; k++){
         for_print_attr[i*(grid_size*6+1)+j*6+k] = colstr[k];
       }
-
-      if (iter < 900){
-        sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "%lu ", MAX_ITER-iter);
-      } else {
-        if( iter < 990){
-          sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "0%lu ", MAX_ITER-iter);
-        } else{
-          sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "00%lu ", MAX_ITER-iter);
-        }
-      }
-
+      
+      sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "%-4lu ", iter);
       if ((j+1) % grid_size == 0) {
         for_print_attr[i*(grid_size*6+1)+j*6+6] = '\n';
         for_print_conv[i*(grid_size*4+1)+j*4+4] = '\n';
       }
     }
   }
+  pthread_mutex_lock( &mutex_max_iter); 
+  if (max_iter_glob < max_iter_loc) {
+    max_iter_glob = max_iter_loc;
+  }
+  pthread_mutex_unlock( &mutex_max_iter );
   return NULL;
 }
 
@@ -238,6 +240,10 @@ int main(int argc, char *argv[]){
     newton_pointer = &newton_iterate;
   }
 
+  max_iter = max_iters_deg[d-1];
+  if ( grid_size == 50000 ){
+    max_iter = max_iters_deg[7];
+  }
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
   n_chunks = ceil((float) grid_size*(grid_size * 6 + 1) / CHUNK_SIZE);
 
@@ -246,7 +252,7 @@ int main(int argc, char *argv[]){
   if (n_chunks * num_threads * block_size > grid_size) {
     n_chunks = ceil((float)grid_size / (num_threads * block_size));
   }
-  printf("nchunk %lu block_size %lu \n",n_chunks,block_size);
+  //printf("nchunk %lu block_size %lu \n",n_chunks,block_size);
 
   find_true_roots(true_roots);
 
@@ -266,7 +272,7 @@ int main(int argc, char *argv[]){
   FILE *fp_conv = fopen(str, "w+");
   fprintf(fp_conv, "P2\n");
   fprintf(fp_conv, "%ld %ld\n", grid_size, grid_size);
-  fprintf(fp_conv, "%zu\n", MAX_ITER);
+  fprintf(fp_conv, "%zu\n", max_iter);
 
   pthread_t threads[num_threads];
   pthread_t write_thread;
@@ -353,6 +359,6 @@ int main(int argc, char *argv[]){
   }
   free(true_roots);
   free(colormap);
-
+  //printf("Max iter %zu \n", max_iter_glob);
   return 0;
 }
