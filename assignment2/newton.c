@@ -46,7 +46,7 @@ int running_thread_write = 0;
 
 void newton_iterate1(double *x0_re, double *x0_im){
 
-  *x0_re = 1; 
+  *x0_re = 1;
   *x0_im = 0;
 }
 
@@ -109,7 +109,7 @@ void * newton_method(void * pv){
         && fabs(x0_re) < TOL_DIV
         && fabs(x0_im) < TOL_DIV ){
         (*newton_pointer)(&x0_re,&x0_im);
-        //newton_iterate1(&x0_re,&x0_im);  
+        //newton_iterate1(&x0_re,&x0_im);
         x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
 
         if (fabs(1.0f - x_abs) < TOL_CONV ) {
@@ -133,8 +133,18 @@ void * newton_method(void * pv){
       for (size_t k = 0; k < 6; k++){
         for_print_attr[i*(grid_size*6+1)+j*6+k] = colstr[k];
       }
-      
-      sprintf(&for_print_conv[i*(grid_size*4+1)+j*4], "%-4lu ", iter);
+
+
+      for_print_conv[i*(grid_size*4+1)+j*4] = iter / 100 + '0';
+
+      // 954 / 10 = 95, 95 % 10 = 5 + '0'
+      for_print_conv[i*(grid_size*4+1)+j*4+1] = (iter / 10) % 10 + '0';
+
+      // 954 % 100 = 54, 54 % 10 = 4
+      for_print_conv[i*(grid_size*4+1)+j*4+2] = (iter % 100) % 10 + '0';
+
+      for_print_conv[i*(grid_size*4+1)+j*4+3] = ' ';
+
       if ((j+1) % grid_size == 0) {
         for_print_attr[i*(grid_size*6+1)+j*6+6] = '\n';
         for_print_conv[i*(grid_size*4+1)+j*4+4] = '\n';
