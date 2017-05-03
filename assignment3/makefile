@@ -1,8 +1,8 @@
-SOURCE =  cell_distances.c sse_mathfun.h
+SOURCE =  cell_distances.c
 OUTPUT = cell_distances
 CC = gcc
 LIBS =  -lm
-OPTIM = -Ofast -msse4.2
+OPTIM = -Ofast
 OTHERFLAGS = -Wall -fopenmp
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
@@ -12,7 +12,7 @@ CFLAGSGC = -fprofile-arcs -ftest-coverage
 all : main
 
 main : $(SOURCE)
-	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) $(OTHERFLAGS) -I.
+	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) $(OTHERFLAGS)
 
 $(OBJS) : $(SOURCE)
 
