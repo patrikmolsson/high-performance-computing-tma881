@@ -37,6 +37,29 @@ size_t d = 3;
 size_t grid_size = 1000;
 size_t num_threads = 3;
 size_t block_size;
+void (*newton_pointer)( double*, double*);
+// Global variable to check max iterations to keep convergence ppm in range.
+pthread_mutex_t mutex_max_iter;
+
+int running_thread_write = 0;
+pthread_mutex_t run_lock_write = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t run_cond_write = PTHREAD_COND_INITIALIZER;
+
+size_t max_iter_glob;
+
+void newton_iterate1(double *x0_re, double *x0_im){
+
+  *x0_re = 1; 
+  *x0_im = 0;
+}
+
+void newton_iterate2(double *x0_re, double *x0_im){
+
+  double r_2 = *x0_re* *x0_re + *x0_im * *x0_im;
+  *x0_re = *x0_re * ( 1 + 1.0f/r_2 ) / 2 ;
+
+  *x0_im = *x0_im * (1 - 1.0f / r_2 ) / 2 ;
+}
 
 void newton_iterate(double *x0_re, double *x0_im){
 
@@ -71,7 +94,6 @@ void * newton_method(void * pv){
   size_t  iter = 0, ix = args->ix;
   double x0_re, x0_im, x_abs;
   double incr = 2*(double)interval / grid_size;
-  double arg,r_2;
   incr += incr/(grid_size-1);
   int conv;
 
@@ -90,11 +112,7 @@ void * newton_method(void * pv){
           && fabs(x0_re) < TOL_DIV
           && fabs(x0_im) < TOL_DIV ){
 
-          //newton_iterate(&x0_re,&x0_im);
-          arg = - atan2(x0_im,x0_re) *  (d - 1.0f);
-          r_2 = pow(x0_re* x0_re + x0_im * x0_im , (1.0f-d)/2 ) / ( d*1.0f );
-          x0_re = (1 - 1.0f / d) * x0_re + r_2 * cos(arg);
-          x0_im = (1 - 1.0f / d) * x0_im + r_2 * sin(arg);
+          (*newton_pointer)(&x0_re,&x0_im);
           x_abs = sqrt(x0_re*x0_re+x0_im*x0_im);
 
         if (fabs(1.0f - x_abs) < TOL_CONV ) {
@@ -207,6 +225,18 @@ int main(int argc, char *argv[]){
     true_roots[i] = malloc(2 * sizeof *true_roots[i]);
   }
   root_color_map(colormap);
+
+  // Set function newton iterate to simple hardcoded solutions if d = {1,2}, standard else:
+
+  if ( d == 1  ){
+    newton_pointer = &newton_iterate1;
+  }
+  else if ( d == 2 ){
+    newton_pointer = &newton_iterate2;
+  }
+  else{
+    newton_pointer = &newton_iterate;
+  }
 
   // Divide the grid's rows into num_threads st block. Pass starting point of a block to each thread. Not guaranteed to be integer => Do int division, last thread takes the remaining row (for loop down below).
   n_chunks = ceil((float) grid_size*(grid_size * 6 + 1) / CHUNK_SIZE);
