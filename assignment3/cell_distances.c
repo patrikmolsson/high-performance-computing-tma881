@@ -14,12 +14,13 @@ static const float max_dist = 34.64f;
 static const size_t fac = 100;
 
 float hsum_ps_sse3(__m128 v) {
-    __m128 shuf = _mm_movehdup_ps(v);        // broadcast elements 3,1 to 2,0
-    __m128 sums = _mm_add_ps(v, shuf);
-    shuf        = _mm_movehl_ps(shuf, sums); // high half -> low half
-    sums        = _mm_add_ss(sums, shuf);
-    return        _mm_cvtss_f32(sums);
+  __m128 shuf = _mm_movehdup_ps(v);        // broadcast elements 3,1 to 2,0
+  __m128 sums = _mm_add_ps(v, shuf);
+  shuf        = _mm_movehl_ps(shuf, sums); // high half -> low half
+  sums        = _mm_add_ss(sums, shuf);
+  return        _mm_cvtss_f32(sums);
 }
+
 
 void read_cells(){
   size_t lines = 0, n_coords = 4,i,j;
@@ -64,6 +65,7 @@ void read_cells(){
   //}
   __m128 va,vb,diff_ab,mul_ab;
   #pragma omp parallel for private(i,j,dist,va,vb,diff_ab,mul_ab) shared(cell_array,count_array) num_threads(n_threads)
+  //#pragma omp parallel for private(i,j,dist) shared(cell_array,count_array) num_threads(n_threads)
   for(i = 0; i<lines*n_coords; i+=n_coords){
     for(j = i + n_coords; j<lines*n_coords; j+=n_coords){
       va = _mm_load_ps(&cell_array[i]);

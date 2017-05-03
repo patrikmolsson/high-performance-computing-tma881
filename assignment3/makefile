@@ -1,6 +1,6 @@
 SOURCE =  cell_distances.c sse_mathfun.h
 OUTPUT = cell_distances
-CC = gcc
+CC = gcc-6
 LIBS =  -lm
 OPTIM = -Ofast -msse4.2
 OTHERFLAGS = -Wall -fopenmp
