@@ -40,14 +40,9 @@ size_t block_size;
 void (*newton_pointer)( double*, double*);
 size_t max_iters_deg[8] = {1,14,49,185,123,197,290,450};
 size_t max_iter;
-// Global variable to check max iterations to keep convergence ppm in range.
-pthread_mutex_t mutex_max_iter;
 
 int running_thread_write = 0;
-pthread_mutex_t run_lock_write = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t run_cond_write = PTHREAD_COND_INITIALIZER;
 
-size_t max_iter_glob = 0;
 
 void newton_iterate1(double *x0_re, double *x0_im){
 
@@ -98,7 +93,6 @@ void * newton_method(void * pv){
   double incr = 2*(double)interval / grid_size;
   incr += incr/(grid_size-1);
   int conv;
-  size_t max_iter_loc = 0;
 
   for(size_t i = 0; i<block_size; i++){
     for(size_t j = 0; j<grid_size; j++){
@@ -136,9 +130,6 @@ void * newton_method(void * pv){
       if(iter > max_iter)
         iter = max_iter;
 
-      if(iter > max_iter_loc)
-        max_iter_loc = iter;
-
       for (size_t k = 0; k < 6; k++){
         for_print_attr[i*(grid_size*6+1)+j*6+k] = colstr[k];
       }
@@ -150,11 +141,6 @@ void * newton_method(void * pv){
       }
     }
   }
-  pthread_mutex_lock( &mutex_max_iter); 
-  if (max_iter_glob < max_iter_loc) {
-    max_iter_glob = max_iter_loc;
-  }
-  pthread_mutex_unlock( &mutex_max_iter );
   return NULL;
 }
 
@@ -359,6 +345,5 @@ int main(int argc, char *argv[]){
   }
   free(true_roots);
   free(colormap);
-  //printf("Max iter %zu \n", max_iter_glob);
   return 0;
 }
