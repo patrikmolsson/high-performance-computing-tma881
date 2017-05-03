@@ -3,30 +3,18 @@
 #include <stdlib.h>
 #include <math.h>
 #include <omp.h>
-//#include "emmintrin.h"
-#include <xmmintrin.h>
-#include <pmmintrin.h>
-#include <sse_mathfun.h>
 
 size_t n_threads;
 static const size_t max_pos = 3465;
 static const float max_dist = 34.64f;
 static const size_t fac = 100;
 
-float hsum_ps_sse3(__m128 v) {
-    __m128 shuf = _mm_movehdup_ps(v);        // broadcast elements 3,1 to 2,0
-    __m128 sums = _mm_add_ps(v, shuf);
-    shuf        = _mm_movehl_ps(shuf, sums); // high half -> low half
-    sums        = _mm_add_ss(sums, shuf);
-    return        _mm_cvtss_f32(sums);
-}
-
 void read_cells(){
-  size_t lines = 0, n_coords = 4,i,j;
+  size_t lines = 0, n_coords = 3,i,j;
   float dist;
   //char* filename = "cell_e5";
-  //char* filename = "cell_e4";
-  char* filename = "cells";
+  char* filename = "cell_e4";
+  //char* filename = "cells";
   size_t *count_array;
   float *cell_array;
 
@@ -54,7 +42,6 @@ void read_cells(){
 
   for(size_t i = 0; i<lines*n_coords; i+=n_coords){
     fscanf(fp, "%f %f %f", &cell_array[i], &cell_array[i+1], &cell_array[i+2]);
-    cell_array[i+3] = 0;
   }
 
   fclose(fp);
@@ -62,21 +49,14 @@ void read_cells(){
   //for(size_t i = 0; i<lines*n_coords; i+=n_coords){
   //  printf("%f %f %f \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
   //}
-  #pragma omp parallel for private(i,j,dist) shared(cell_array,count_array) num_threads(n_threads)
+  #pragma omp parallel for private(i,j,dist) shared(cell_array,count_array)
   for(i = 0; i<lines*n_coords; i+=n_coords){
     for(j = i + n_coords; j<lines*n_coords; j+=n_coords){
-      __m128 va = _mm_load_ps(&cell_array[i]);
-      __m128 vb = _mm_load_ps(&cell_array[j]);
-      __m128 diff_ab = _mm_sub_ps(va, vb);
-      __m128 mul_ab = exp_ps(2*log_ps(diff_ab));
-      dist = hsum_ps_sse3(mul_ab);
-      dist = round(sqrt(dist)*fac)/fac;
-      count_array[(size_t)(dist/max_dist*max_pos)]++;
-      /*dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
+      dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                   (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
                   (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2]));
       dist = round(dist*fac)/fac;
-      count_array[(size_t)(dist/max_dist*max_pos)]++;*/
+      count_array[(size_t)(dist/max_dist*max_pos)]++;
     }
   }
 
@@ -103,7 +83,7 @@ int main(int argc, char *argv[]){
 
     }
   }
-
+  omp_set_num_threads(n_threads);
   read_cells();
   return 0;
 }
