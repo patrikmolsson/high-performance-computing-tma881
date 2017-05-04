@@ -5,18 +5,19 @@
 #include <omp.h>
 
 size_t n_threads;
-static const size_t max_pos = 3465;
-static const float max_dist = 34.64f;
-static const size_t fac = 100;
+#define max_pos (3465)
+#define max_dist (3464)
+#define fac (100)
+#define n_coords (3)
 
 void read_cells(){
-  size_t lines = 0, n_coords = 3,i,j;
-  float dist;
-  //char* filename = "cell_e5";
-  char* filename = "cell_e4";
+  size_t lines,i,j;
+  short dist;
+  char* filename = "cell_e5";
+  //char* filename = "cell_e4";
   //char* filename = "cells";
   size_t *count_array;
-  float *cell_array;
+  int *cell_array;
 
   FILE *fp = fopen(filename, "r");
   if (!strcmp(filename,"cell_e5")){
@@ -37,32 +38,37 @@ void read_cells(){
     }
   }
   rewind(fp);*/
+  size_t n = lines*n_coords;
   count_array = calloc(max_pos, sizeof*count_array);
-  cell_array = calloc(lines * n_coords, sizeof *cell_array);
+  cell_array = calloc(n, sizeof *cell_array);
 
-  for(size_t i = 0; i<lines*n_coords; i+=n_coords){
-    fscanf(fp, "%f %f %f", &cell_array[i], &cell_array[i+1], &cell_array[i+2]);
+  float tmp[3];
+  for(size_t i = 0; i<n; i+=n_coords){
+    fscanf(fp, "%f %f %f", &tmp[0], &tmp[1], &tmp[2]);
+    cell_array[i] = tmp[0]*fac;
+    cell_array[i+1] = tmp[1]*fac;
+    cell_array[i+2] = tmp[2]*fac;
   }
 
   fclose(fp);
 
   //for(size_t i = 0; i<lines*n_coords; i+=n_coords){
-  //  printf("%f %f %f \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
+    //printf("%d %d %d \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
   //}
-  #pragma omp parallel for private(i,j,dist) shared(cell_array,count_array)
-  for(i = 0; i<lines*n_coords; i+=n_coords){
-    for(j = i + n_coords; j<lines*n_coords; j+=n_coords){
+
+  #pragma omp parallel for private(i,j,dist) shared(lines,cell_array,count_array) schedule(static,16)
+  for(i = 0; i<n; i+=n_coords){
+    for(j = i + n_coords; j<n; j+=n_coords){
       dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                   (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
                   (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2]));
-      dist = round(dist*fac)/fac;
-      count_array[(size_t)(dist/max_dist*max_pos)]++;
+      count_array[dist]++;
     }
   }
 
-  for(size_t i=0; i<max_pos;i++){
+  for(i=0; i<max_pos;i++){
     if(count_array[i] != 0){
-      printf("%1.2f %ld\n", max_dist*i/max_pos, count_array[i]);
+      printf("%1.2f %ld\n", 1.0f*i/fac, count_array[i]);
     }
   }
 
