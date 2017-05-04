@@ -47,7 +47,7 @@ int main(int argc, char** argv)
  data[i] = i;
 
 FILE *fp;
-char fileName[] = "./hello.cl";
+char fileName[] = "./testcl.cl";
 char *source_str;
 size_t source_size;
 
