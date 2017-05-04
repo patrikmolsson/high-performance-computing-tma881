@@ -54,7 +54,7 @@ void read_cells(){
   fclose(fp);
 
   //for(size_t i = 0; i<lines*n_coords; i+=n_coords){
-    //printf("%d %d %d \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
+  //  printf("%d %d %d \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
   //}
 
 /*
@@ -74,7 +74,7 @@ http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
   }
       #pragma omp critical
     {
-      for(i = 0; i<max_pos; i+=n_coords){
+      for(i = 0; i<max_pos; i++){
         count_array[i] = count_array_private[i];
       }
     }
