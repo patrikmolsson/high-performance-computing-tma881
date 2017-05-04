@@ -40,6 +40,7 @@ size_t block_size;
 void (*newton_pointer)( double*, double*);
 size_t max_iters_deg[8] = {1,14,49,185,123,197,290,450};
 size_t max_iter;
+short d_even;
 
 int running_thread_write = 0;
 
@@ -63,9 +64,18 @@ void newton_iterate(double *x0_re, double *x0_im){
   // atan2; ensuring principal branch for arg(z).
   double arg = - atan2(*x0_im,*x0_re) *  (d - 1.0f);
   // Magnitude for 1/ ( d x^(d-1) )
-  double r_2 = pow( *x0_re* *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
-  *x0_re = (1 - 1.0f / d) * *x0_re + r_2 * cos(arg);
-  *x0_im = (1 - 1.0f / d) * *x0_im + r_2 * sin(arg);
+  //double r_2 = pow( *x0_re * *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
+
+  double tmp = 1/ (*x0_re * *x0_re + *x0_im * *x0_im);
+  double r_2 = tmp / d; 
+  for(size_t i=1; i < (d-1)/2; i++){
+    r_2 *= tmp;
+  }
+  if(d_even == 0 ){
+    r_2 *= sqrt(tmp);
+  }
+  *x0_re = (1 - 1.0f / d) * *x0_re + cos(arg) * r_2;
+  *x0_im = (1 - 1.0f / d) * *x0_im + sin(arg) * r_2;
   // Previous complex double version for reference:
   //*x_0 = (1.0f - 1.0f / d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
 }
@@ -234,6 +244,7 @@ int main(int argc, char *argv[]){
   }
   else{
     newton_pointer = &newton_iterate;
+    d_even = d % 2;
   }
 
   max_iter = max_iters_deg[d-1];
