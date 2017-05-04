@@ -16,8 +16,6 @@ void read_cells(){
   char* filename = "cell_e5";
   //char* filename = "cell_e4";
   //char* filename = "cells";
-  size_t *count_array;
-  int *cell_array;
 
   FILE *fp = fopen(filename, "r");
   if (!strcmp(filename,"cell_e5")){
@@ -38,9 +36,12 @@ void read_cells(){
     }
   }
   rewind(fp);*/
+
   size_t n = lines*n_coords;
-  count_array = calloc(max_pos, sizeof*count_array);
-  cell_array = calloc(n, sizeof *cell_array);
+  //size_t *count_array = calloc(max_pos, sizeof*count_array);
+  //int *cell_array = calloc(n, sizeof *cell_array);
+  int cell_array[n];
+  size_t count_array[max_pos] ={0};
 
   float tmp[3];
   for(size_t i = 0; i<n; i+=n_coords){
@@ -56,24 +57,36 @@ void read_cells(){
     //printf("%d %d %d \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
   //}
 
-  #pragma omp parallel for private(i,j,dist) shared(lines,cell_array,count_array) schedule(static,16)
+/*
+http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
+*/
+#pragma omp parallel shared(lines,cell_array)
+{
+  size_t count_array_private[max_pos] ={0};
+  #pragma omp for private(i,j,dist) schedule(static,16)
   for(i = 0; i<n; i+=n_coords){
     for(j = i + n_coords; j<n; j+=n_coords){
       dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                   (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
                   (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2]));
-      count_array[dist]++;
+      count_array_private[dist]++;
     }
   }
-
+      #pragma omp critical
+    {
+      for(i = 0; i<max_pos; i+=n_coords){
+        count_array[i] = count_array_private[i];
+      }
+    }
+}
   for(i=0; i<max_pos;i++){
     if(count_array[i] != 0){
       printf("%1.2f %ld\n", 1.0f*i/fac, count_array[i]);
     }
   }
 
-  free(cell_array);
-  free(count_array);
+  //free(cell_array);
+  //free(count_array);
 }
 
 int main(int argc, char *argv[]){
