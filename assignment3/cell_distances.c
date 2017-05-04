@@ -12,7 +12,7 @@ size_t n_threads;
 
 void read_cells(){
   size_t lines,i,j;
-  short dist;
+  size_t dist;
   char* filename = "cell_e5";
   //char* filename = "cell_e4";
   //char* filename = "cells";
