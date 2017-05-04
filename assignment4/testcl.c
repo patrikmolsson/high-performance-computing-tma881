@@ -9,8 +9,8 @@
 #include <CL/cl.h>
 
 #define INP_SIZE (1024)
-
-// Simple compute kernel 
+#define MAX_SOURCE_SIZE (0x100000)
+// Simple compute kernel
 
 const char *KernelSource = "\n" \
 "__kernel void square( __global float* input, __global float* output, \n" \
@@ -28,10 +28,10 @@ int main(int argc, char** argv)
  float results[INP_SIZE]; // results returned from device
  unsigned int correct; // number of correct results returned
 
- size_t global; // global domain size 
- size_t local; // local domain size 
+ size_t global; // global domain size
+ size_t local; // local domain size
 
- cl_device_id device_id; // compute device id 
+ cl_device_id device_id; // compute device id
  cl_context context; // compute context
  cl_command_queue commands; // compute command queue
  cl_program program; // compute program
@@ -46,9 +46,24 @@ int main(int argc, char** argv)
  for(i = 0; i < count; i++)
  data[i] = i;
 
- 
+FILE *fp;
+char fileName[] = "./hello.cl";
+char *source_str;
+size_t source_size;
+
+/* Load the source code containing the kernel*/
+fp = fopen(fileName, "r");
+if (!fp) {
+fprintf(stderr, "Failed to load kernel.\n");
+exit(1);
+}
+source_str = (char*)malloc(MAX_SOURCE_SIZE);
+source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
+fclose(fp);
+
+
  // Connect to a compute device
- // If want to run your kernel on CPU then replace the parameter CL_DEVICE_TYPE_GPU 
+ // If want to run your kernel on CPU then replace the parameter CL_DEVICE_TYPE_GPU
  // with CL_DEVICE_TYPE_CPU
 
  err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
@@ -80,7 +95,7 @@ int main(int argc, char** argv)
  }
 
  // Create the compute program from the source buffer
- program = clCreateProgramWithSource(context, 1, (const char **) & KernelSource, NULL, &err);
+ program = clCreateProgramWithSource(context, 1, (const char **) &source_str, (const size_t *)&source_size, &err);
  if (!program)
  {
      printf("Error: Failed to create compute program!\n");
@@ -115,9 +130,9 @@ int main(int argc, char** argv)
  {
     printf("Error: Failed to allocate device memory!\n");
     exit(1);
- } 
+ }
 
- // Write our data set into the input array in device memory 
+ // Write our data set into the input array in device memory
  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * count, data, 0, NULL, NULL);
  if (err != CL_SUCCESS)
  {
@@ -159,7 +174,7 @@ int main(int argc, char** argv)
  clFinish(commands);
 
  // Read back the results from the device to verify the output
- err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * count, results, 0, NULL, NULL ); 
+ err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * count, results, 0, NULL, NULL );
  if (err != CL_SUCCESS)
  {
     printf("Error: Failed to read output array! %d\n", err);
@@ -179,6 +194,8 @@ int main(int argc, char** argv)
  clReleaseKernel(kernel);
  clReleaseCommandQueue(commands);
  clReleaseContext(context);
+
+ free(source_str);
 
  return 0;
 }
