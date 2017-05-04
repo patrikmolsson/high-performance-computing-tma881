@@ -11,13 +11,14 @@ size_t n_threads;
 #define n_coords (3)
 
 void read_cells(){
-  size_t lines,i,j;
+  size_t lines=0,i,j;
   size_t dist;
-  char* filename = "cell_e5";
+  //char* filename = "cell_e5";
   //char* filename = "cell_e4";
-  //char* filename = "cells";
+  char* filename = "cells";
 
   FILE *fp = fopen(filename, "r");
+  /*
   if (!strcmp(filename,"cell_e5")){
     lines = 100000;
   } else if(!strcmp(filename,"cell_e4")){
@@ -25,8 +26,9 @@ void read_cells(){
   } else if(!strcmp(filename,"cells")){
     lines = 10;
   }
+  */
 
-  /*char ch = 0;
+  char ch = 0;
   while(!feof(fp))
   {
     ch = fgetc(fp);
@@ -35,7 +37,8 @@ void read_cells(){
       lines++;
     }
   }
-  rewind(fp);*/
+  printf("%ld\n", lines);
+  rewind(fp);
 
   size_t n = lines*n_coords;
   //size_t *count_array = calloc(max_pos, sizeof*count_array);
