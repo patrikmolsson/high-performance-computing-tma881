@@ -124,7 +124,7 @@ void * newton_method(void * pv){
 
         if (fabs(1.0f - x_abs) < TOL_CONV ) {
           for(size_t k=0; k<d;k++){
-            if (fabs(pow(x0_re-true_roots[k][0],2) + pow(x0_im-true_roots[k][1],2))  < TOL_CONV){
+            if ( (x0_re-true_roots[k][0]) * (x0_re-true_roots[k][0]) + (x0_im-true_roots[k][1])*(x0_im-true_roots[k][1])  < TOL_CONV * TOL_CONV ){
               conv = k;
             }
           }
