@@ -17,7 +17,7 @@ main : $(SOURCE)
 $(OBJS) : $(SOURCE)
 
 clean:
-	@ls | grep -v -E '(makefile|^$(SOURCE)$$)' | xargs rm -f
+	@ls | grep -v -E '(report.markdown|makefile|^$(SOURCE)$$)' | xargs rm -rf
 
 
 gprof : $(SOURCE)
