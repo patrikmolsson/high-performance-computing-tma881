@@ -4,7 +4,7 @@ author:
  - Jakob Lindqvist
  - Per Nilsson Lundberg
  - Patrik Olsson
- - Hampus Toren
+ - Hampus Torén
 date: May 5th 2017
 ---
 
