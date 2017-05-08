@@ -5,28 +5,20 @@
 #include <omp.h>
 
 size_t n_threads;
-#define max_pos (3465)
-#define max_dist (3464)
-#define fac (100)
+#define max_pos (34650)
+#define max_dist (34640)
+#define fac (1000)
 #define n_coords (3)
 
 void read_cells(){
-  size_t lines=0,i,j;
-  size_t dist;
+  size_t i,j;
+  unsigned long lines=0;
+  unsigned short dist;
   //char* filename = "cell_e5";
   //char* filename = "cell_e4";
   char* filename = "cells";
 
   FILE *fp = fopen(filename, "r");
-  /*
-  if (!strcmp(filename,"cell_e5")){
-    lines = 100000;
-  } else if(!strcmp(filename,"cell_e4")){
-    lines = 10000;
-  } else if(!strcmp(filename,"cells")){
-    lines = 10;
-  }
-  */
 
   char ch = 0;
   while(!feof(fp))
@@ -40,13 +32,11 @@ void read_cells(){
   rewind(fp);
 
   size_t n = lines*n_coords;
-  //size_t *count_array = calloc(max_pos, sizeof*count_array);
-  //int *cell_array = calloc(n, sizeof *cell_array);
-  int cell_array[n];
-  size_t count_array[max_pos] ={0};
+  long cell_array[n];
+  unsigned short count_array[max_pos] ={0};
 
   float tmp[3];
-  for(size_t i = 0; i<n; i+=n_coords){
+  for(i = 0; i<n; i+=n_coords){
     fscanf(fp, "%f %f %f", &tmp[0], &tmp[1], &tmp[2]);
     cell_array[i] = tmp[0]*fac;
     cell_array[i+1] = tmp[1]*fac;
@@ -55,16 +45,12 @@ void read_cells(){
 
   fclose(fp);
 
-  //for(size_t i = 0; i<lines*n_coords; i+=n_coords){
-  //  printf("%d %d %d \n", cell_array[i], cell_array[i+1], cell_array[i+2]);
-  //}
-
 /*
 http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
 */
 #pragma omp parallel shared(lines,cell_array)
 {
-  size_t count_array_private[max_pos] ={0};
+  unsigned short count_array_private[max_pos] ={0};
   #pragma omp for private(i,j,dist) schedule(static,16)
   for(i = 0; i<n; i+=n_coords){
     for(j = i + n_coords; j<n; j+=n_coords){
@@ -81,14 +67,13 @@ http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
       }
     }
 }
+
   for(i=0; i<max_pos;i++){
     if(count_array[i] != 0){
-      printf("%1.2f %ld\n", 1.0f*i/fac, count_array[i]);
+      printf("%1.2f %d\n", 1.0f*i/fac, count_array[i]);
     }
   }
 
-  //free(cell_array);
-  //free(count_array);
 }
 
 int main(int argc, char *argv[]){
