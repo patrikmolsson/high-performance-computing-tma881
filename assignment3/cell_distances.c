@@ -37,7 +37,6 @@ void read_cells(){
       lines++;
     }
   }
-  printf("%ld\n", lines);
   rewind(fp);
 
   size_t n = lines*n_coords;
