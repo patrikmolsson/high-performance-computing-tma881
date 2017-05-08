@@ -5,9 +5,9 @@
 #include <omp.h>
 
 size_t n_threads;
-#define max_pos (34650)
-#define max_dist (34640)
-#define fac (1000)
+#define max_pos (3464)
+#define max_dist (3464)
+#define fac (100)
 #define n_coords (3)
 
 void read_cells(){
@@ -32,8 +32,8 @@ void read_cells(){
   rewind(fp);
 
   size_t n = lines*n_coords;
-  long cell_array[n];
-  unsigned short count_array[max_pos] ={0};
+  float cell_array[n];
+  unsigned long count_array[max_pos] ={0};
 
   float tmp[3];
   for(i = 0; i<n; i+=n_coords){
@@ -50,13 +50,13 @@ http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
 */
 #pragma omp parallel shared(lines,cell_array)
 {
-  unsigned short count_array_private[max_pos] ={0};
+  unsigned long count_array_private[max_pos] ={0};
   #pragma omp for private(i,j,dist) schedule(static,16)
   for(i = 0; i<n; i+=n_coords){
     for(j = i + n_coords; j<n; j+=n_coords){
-      dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
+      dist = round(sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                   (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
-                  (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2]));
+                  (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2])));
       count_array_private[dist]++;
     }
   }
