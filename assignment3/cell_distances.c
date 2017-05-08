@@ -12,7 +12,7 @@ size_t n_threads;
 
 void read_cells(){
   size_t lines=0,i,j;
-  float dist;
+  size_t dist;
   //char* filename = "cell_e5";
   //char* filename = "cell_e4";
   char* filename = "cells";
@@ -42,7 +42,7 @@ void read_cells(){
   size_t n = lines*n_coords;
   //size_t *count_array = calloc(max_pos, sizeof*count_array);
   //int *cell_array = calloc(n, sizeof *cell_array);
-  float cell_array[n];
+  int cell_array[n];
   size_t count_array[max_pos] ={0};
 
   float tmp[3];
@@ -71,7 +71,7 @@ http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
       dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                   (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
                   (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2]));
-      count_array_private[(size_t)round(max_pos*dist/max_dist)]++;
+      count_array_private[dist]++;
     }
   }
       #pragma omp critical
@@ -83,7 +83,7 @@ http://stackoverflow.com/questions/20413995/reducing-on-array-in-openmp
 }
   for(i=0; i<max_pos;i++){
     if(count_array[i] != 0){
-      printf("%1.2f %ld\n", 1.0f*max_dist*i/max_pos/fac, count_array[i]);
+      printf("%1.2f %ld\n", 1.0f*i/fac, count_array[i]);
     }
   }
 
