@@ -7,17 +7,13 @@ OTHERFLAGS = -Wall -fopenmp
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
 
-.PHONY : all
-
-all : main
-
-main : $(SOURCE)
+cell_distances : $(SOURCE)
 	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) $(OTHERFLAGS)
 
 $(OBJS) : $(SOURCE)
 
 clean:
-	@ls | grep -v -E '(makefile|^$(SOURCE)$$)' | xargs rm -f
+	@ls | grep -v -E '(report.markdown|makefile|^$(SOURCE)$$)' | xargs rm -rf
 
 
 gprof : $(SOURCE)
