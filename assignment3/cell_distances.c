@@ -12,6 +12,7 @@ size_t n_threads;
 void read_cells(){
   unsigned long i,j,lines=0;
   unsigned long dist;
+  int fscan;
   //char* filename = "cell_e5";
   //char* filename = "cell_e4";
   char* filename = "cells";
@@ -36,7 +37,7 @@ void read_cells(){
 
   float tmp[3];
   for(i = 0; i<n; i+=n_coords){
-    fscanf(fp, "%f %f %f", &tmp[0], &tmp[1], &tmp[2]);
+    fscan = fscanf(fp, "%f %f %f", &tmp[0], &tmp[1], &tmp[2]);
     cell_array[i] = tmp[0];
     cell_array[i+1] = tmp[1];
     cell_array[i+2] = tmp[2];

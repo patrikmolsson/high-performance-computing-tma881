@@ -3,7 +3,7 @@ OUTPUT = cell_distances
 CC = gcc
 LIBS =  -lm
 OPTIM = -Ofast -march=native
-OTHERFLAGS = -Wall -fopenmp
+OTHERFLAGS = -fopenmp
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
 
