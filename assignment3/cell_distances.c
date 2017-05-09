@@ -11,7 +11,7 @@ size_t n_threads;
 
 void read_cells(){
   unsigned long i,j,lines=0;
-  unsigned short dist;
+  unsigned long dist;
   //char* filename = "cell_e5";
   //char* filename = "cell_e4";
   char* filename = "cells";
@@ -37,9 +37,9 @@ void read_cells(){
   float tmp[3];
   for(i = 0; i<n; i+=n_coords){
     fscanf(fp, "%f %f %f", &tmp[0], &tmp[1], &tmp[2]);
-    cell_array[i] = tmp[0]*fac;
-    cell_array[i+1] = tmp[1]*fac;
-    cell_array[i+2] = tmp[2]*fac;
+    cell_array[i] = tmp[0];
+    cell_array[i+1] = tmp[1];
+    cell_array[i+2] = tmp[2];
   }
 
   fclose(fp);
@@ -54,9 +54,10 @@ void read_cells(){
     #pragma omp for private(i,j,dist) schedule(static,32)
     for(i = 0; i<n; i+=n_coords){
       for(j = i + n_coords; j<n; j+=n_coords){
-        dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
+
+        dist = round(sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                     (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
-                    (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2])) + 0.5;
+                    (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2]))*fac);
         count_array_private[dist]++;
       }
     }
@@ -69,9 +70,7 @@ void read_cells(){
   }
 
   for(i=0; i<max_pos;i++){
-    //if(count_array[i] != 0){
-      printf("%1.2f %ld\n", 1.0f*i/fac, count_array[i]);
-    //}
+      printf("%05.2f %ld\n", 1.0f*i/fac, count_array[i]);
   }
 
 }

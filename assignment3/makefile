@@ -2,7 +2,7 @@ SOURCE =  cell_distances.c
 OUTPUT = cell_distances
 CC = gcc
 LIBS =  -lm
-OPTIM = -O2
+OPTIM = -Ofast -march=native
 OTHERFLAGS = -Wall -fopenmp
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
