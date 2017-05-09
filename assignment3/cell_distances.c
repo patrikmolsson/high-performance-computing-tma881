@@ -5,7 +5,7 @@
 #include <omp.h>
 
 size_t n_threads;
-#define max_pos (3464)
+#define max_pos (3466)
 #define fac (100)
 #define n_coords (3)
 
@@ -54,9 +54,9 @@ void read_cells(){
     #pragma omp for private(i,j,dist) schedule(static,32)
     for(i = 0; i<n; i+=n_coords){
       for(j = i + n_coords; j<n; j+=n_coords){
-        dist = round(sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
+        dist = sqrt((cell_array[i]-cell_array[j])*(cell_array[i]-cell_array[j])+
                     (cell_array[i+1]-cell_array[j+1])*(cell_array[i+1]-cell_array[j+1])+
-                    (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2])));
+                    (cell_array[i+2]-cell_array[j+2])*(cell_array[i+2]-cell_array[j+2])) + 0.5;
         count_array_private[dist]++;
       }
     }
@@ -69,9 +69,9 @@ void read_cells(){
   }
 
   for(i=0; i<max_pos;i++){
-    if(count_array[i] != 0){
+    //if(count_array[i] != 0){
       printf("%1.2f %ld\n", 1.0f*i/fac, count_array[i]);
-    }
+    //}
   }
 
 }
