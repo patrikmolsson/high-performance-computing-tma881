@@ -7,6 +7,10 @@ OTHERFLAGS = -fopenmp
 CFLAGSGP = -pg
 CFLAGSGC = -fprofile-arcs -ftest-coverage
 
+.PHONY : all
+
+all : cell_distances
+
 cell_distances : $(SOURCE)
 	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) $(OTHERFLAGS)
 
