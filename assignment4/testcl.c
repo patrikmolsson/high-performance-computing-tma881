@@ -8,8 +8,9 @@
 #include <sys/stat.h>
 #include <CL/cl.h>
 
-#define GRID_SIZE (3)
-#define GRID_SIZE_SQ (GRID_SIZE*GRID_SIZE)
+#define I (3) // TODO get this from the user
+#define GRID_SIZE (I + 2) // +2 because of empty padding
+#define GRID_SIZE_SQ (GRID_SIZE * GRID_SIZE)
 #define MAX_SOURCE_SIZE (0x100000)
 
 int main(int argc, char** argv)
@@ -29,11 +30,10 @@ int main(int argc, char** argv)
   cl_kernel kernel; // compute kernel
   cl_mem input; // device memory used for the input array
 
-  //data[GRID_SIZE_SQ/2-GRID_SIZE/2-1] = 1e6f;
-  data[4] = 1e6f;
+  data[GRID_SIZE_SQ/2] = 1e6f;
 
   for (size_t i=0;i<GRID_SIZE_SQ;i++){
-    if(i%GRID_SIZE==0)
+    if(i % GRID_SIZE ==0)
       printf("\n");
     printf("%f ",data[i]);
   }
@@ -153,10 +153,10 @@ int main(int argc, char** argv)
 
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
-  global = GRID_SIZE_SQ;
+  global = I * I;
   local = global; // TODO: FIX nice local work group size
   printf("local %lu\n",local);
-  size_t iter_max = 2;
+  size_t iter_max = 4;
   for (size_t iter = 0; iter < iter_max; iter++){
     err = clSetKernelArg(kernel, 2, sizeof(unsigned int), &iter);
     err |= clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
@@ -177,12 +177,24 @@ int main(int argc, char** argv)
     printf("Error: Failed to read output array! %d\n", err);
     exit(1);
   }
-  for (size_t i=0;i<GRID_SIZE_SQ;i++){
+  // Print padded
+  for (size_t i=0;i < GRID_SIZE_SQ;i++){
     if(i%GRID_SIZE==0)
       printf("\n");
     printf("%f ",data[i]);
   }
 
+  printf("\n");
+  // Print unpadded
+  size_t transformedId;
+  for (size_t i=0; i < I * I;i++){
+    transformedId = i + (GRID_SIZE + 1) + 2 * (i / (GRID_SIZE - 2));
+
+    if(i%I==0)
+      printf("\n");
+
+    printf("%f ",data[transformedId]);
+  }
   // Cleaning up
   clReleaseMemObject(input);
   clReleaseProgram(program);
