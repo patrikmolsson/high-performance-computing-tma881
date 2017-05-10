@@ -12,7 +12,7 @@ CFLAGSGC = -fprofile-arcs -ftest-coverage
 all : cell_distances
 
 cell_distances : $(SOURCE)
-	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) -Wall
+	$(CC) -o $(OUTPUT) $(OPTIM) $(SOURCE) $(LIBS) $(OTHERFLAGS)
 
 $(OBJS) : $(SOURCE)
 
