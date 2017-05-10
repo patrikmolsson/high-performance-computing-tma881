@@ -8,20 +8,26 @@
 #include <sys/stat.h>
 #include <CL/cl.h>
 
-#define I (100) // TODO get this from the user
-#define GRID_SIZE (I + 2) // +2 because of empty padding
-#define GRID_SIZE_SQ (GRID_SIZE * GRID_SIZE)
 #define MAX_SOURCE_SIZE (0x100000)
 
 int main(int argc, char** argv)
 {
+  uint32_t ROWS = 10; // TODO get this from the user
+  uint32_t COLS = 3; // TODO get this from the user
+  uint32_t PADDED_ROWS = (ROWS + 2);
+  uint32_t PADDED_COLS = (COLS + 2);
+  uint64_t GRID_SIZE = (ROWS * COLS);
+  uint64_t GRID_SIZE_PADDED = (PADDED_ROWS * PADDED_COLS);
+
   int err; // error code
 
-  float data[GRID_SIZE_SQ * 2] = {0.0f}; // original input data set to
+  float *data = calloc(sizeof(float), GRID_SIZE_PADDED * 2);
   unsigned int correct; // number of correct results returned
 
   size_t global; // global domain size
   size_t local; // local domain size
+
+  printf("Init with %u %u %u %u", ROWS, COLS, PADDED_ROWS, PADDED_COLS);
 
   cl_device_id device_id; // compute device id
   cl_context context; // compute context
@@ -30,15 +36,21 @@ int main(int argc, char** argv)
   cl_kernel kernel; // compute kernel
   cl_mem input; // device memory used for the input array
 
-  data[GRID_SIZE_SQ / 2 - GRID_SIZE / 2 - 1] = 1e6f;
+  int innerIndex = GRID_SIZE / 2 - 2 * ((GRID_SIZE + 1) % 2);
 
-  //for (size_t i=0;i<GRID_SIZE_SQ;i++){
-  //  if(i % GRID_SIZE ==0)
-  //    printf("\n");
-  //  printf("%f ",data[i]);
-  //}
+  int transformedInnerIndex = innerIndex + (PADDED_COLS + 1) + 2 * (innerIndex / (PADDED_COLS - 2));
 
-  //printf("\n");
+  data[transformedInnerIndex] = 1e6f;
+
+  printf("Indices: %d %d\n", innerIndex, transformedInnerIndex);
+
+   for (size_t i=0;i<GRID_SIZE_PADDED;i++){
+    if(i % PADDED_COLS == 0)
+      printf("\n");
+    printf("%f ", data[i]);
+  }
+
+  printf("\n");
 
   FILE *fp;
   char fileName[] = "./testcl.cl";
@@ -117,7 +129,7 @@ int main(int argc, char** argv)
   }
 
   // Create the input and output arrays in device memory for our calculation
-  input = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * GRID_SIZE_SQ * 2, NULL, NULL);
+  input = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * GRID_SIZE_PADDED * 2, NULL, NULL);
 
   if (!input)
   {
@@ -126,7 +138,7 @@ int main(int argc, char** argv)
   }
 
   // Write our data set into the input array in device memory
-  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_SQ * 2, data, 0, NULL, NULL);
+  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL);
   if (err != CL_SUCCESS)
   {
     printf("Error: Failed to write to source array!\n");
@@ -135,9 +147,9 @@ int main(int argc, char** argv)
 
   // Set the arguments to our compute kernel
   err = 0;
-  size_t grid_size= GRID_SIZE;
   err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
-  err |= clSetKernelArg(kernel, 1, sizeof(unsigned int), &grid_size);
+  err |= clSetKernelArg(kernel, 1, sizeof(uint32_t), &PADDED_ROWS);
+  err |= clSetKernelArg(kernel, 2, sizeof(uint32_t), &PADDED_COLS);
 
   if (err != CL_SUCCESS)
   {
@@ -155,11 +167,12 @@ int main(int argc, char** argv)
 
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
-  global = I * I;
-  printf("local %lu\n",local);
-  size_t iter_max = 100000;
+  global = GRID_SIZE;
+  local = 1;
+  printf("local %lu\n", local);
+  size_t iter_max = 2;
   for (size_t iter = 0; iter < iter_max; iter++){
-    err = clSetKernelArg(kernel, 2, sizeof(unsigned int), &iter);
+    err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &iter);
     err |= clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL, 0, NULL, NULL); // TODO Optimize local (5th arg)
     if (err)
     {
@@ -172,32 +185,32 @@ int main(int argc, char** argv)
   clFinish(commands);
 
   // Read back the results from the device to verify the output
-  err |= clEnqueueReadBuffer( commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_SQ * 2, data, 0, NULL, NULL );
+  err |= clEnqueueReadBuffer( commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL );
   if (err != CL_SUCCESS)
   {
     printf("Error: Failed to read output array! %d\n", err);
     exit(1);
   }
   // Print padded
-  //printf("Printing padded\n");
-  //for (size_t i=0;i < GRID_SIZE_SQ;i++){
-  //  if(i%GRID_SIZE==0)
-  //    printf("\n");
-  //  printf("%f ",data[i]);
-  //}
+  printf("Printing padded\n");
+  for (size_t i=0; i < GRID_SIZE_PADDED; i++) {
+    if(i % PADDED_COLS==0)
+      printf("\n");
+    printf("%f ",data[i]);
+  }
 
-  //printf("\n");
-  //printf("Printing non-padded\n");
-  //// Print unpadded
-  //size_t transformedId;
-  //for (size_t i=0; i < I * I;i++){
-  //  transformedId = i + (GRID_SIZE + 1) + 2 * (i / (GRID_SIZE - 2));
+  printf("\n");
+  printf("Printing non-padded\n");
+  // Print unpadded
+  size_t transformedId;
+  for (size_t i=0; i < GRID_SIZE;i++){
+    transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
 
-  //  if(i%I==0)
-  //    printf("\n");
+    if(i%COLS==0)
+      printf("\n");
 
-  //  printf("%f ",data[transformedId]);
-  //}
+    printf("%f ",data[transformedId]);
+  }
   // Cleaning up
   clReleaseMemObject(input);
   clReleaseProgram(program);
@@ -206,6 +219,7 @@ int main(int argc, char** argv)
   clReleaseContext(context);
 
   free(source_str);
+  free(data);
 
   return 0;
 }
