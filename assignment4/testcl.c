@@ -8,24 +8,17 @@
 #include <sys/stat.h>
 #include <CL/cl.h>
 
-#define INP_SIZE (1024)
+#define GRID_SIZE (3)
+#define GRID_SIZE_SQ (GRID_SIZE*GRID_SIZE)
 #define MAX_SOURCE_SIZE (0x100000)
 // Simple compute kernel
-
-const char *KernelSource = "\n" \
-"__kernel void square( __global float* input, __global float* output, \n" \
-" const unsigned int count) {            \n" \
-" int i = get_global_id(0);              \n" \
-" if(i < count) \n" \
-" output[i] = input[i]; \n" \
-"}                     \n" ;
 
 int main(int argc, char** argv)
 {
 
  int err; // error code
- float data[INP_SIZE]; // original input data set to device
- float results[INP_SIZE]; // results returned from device
+ float data[GRID_SIZE_SQ] = {0.0f}; // original input data set to
+ float data2[GRID_SIZE_SQ] = {0.0f}; // original input data set to device
  unsigned int correct; // number of correct results returned
 
  size_t global; // global domain size
@@ -39,12 +32,21 @@ int main(int argc, char** argv)
  cl_mem input; // device memory used for the input array
  cl_mem output; // device memory used for the output array
 
- // Fill our data set with random values
- int i = 0;
- unsigned int count = INP_SIZE;
+ //data[GRID_SIZE_SQ/2-GRID_SIZE/2-1] = 1e6f;
+ //data2[GRID_SIZE_SQ/2-GRID_SIZE/2-1] = 1e6f;
+ data[4] = 1e6f;
+ data2[4] = 1e6f;
 
- for(i = 0; i < count; i++)
- data[i] = i;
+ for (size_t i=0;i<GRID_SIZE_SQ;i++){
+    if(i%GRID_SIZE==0)
+        printf("\n");
+    printf("%f ",data[i]);
+ }
+ for (size_t i=0;i<GRID_SIZE_SQ;i++){
+    if(i%GRID_SIZE==0)
+        printf("\n");
+    printf("%f ",data2[i]);
+ }
 
 FILE *fp;
 char fileName[] = "./testcl.cl";
@@ -123,8 +125,8 @@ fclose(fp);
  }
 
  // Create the input and output arrays in device memory for our calculation
- input = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(float) * count, NULL, NULL);
- output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(float) * count, NULL, NULL);
+ input = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * GRID_SIZE_SQ, NULL, NULL);
+ output = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * GRID_SIZE_SQ, NULL, NULL);
 
  if (!input || !output)
  {
@@ -133,7 +135,7 @@ fclose(fp);
  }
 
  // Write our data set into the input array in device memory
- err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * count, data, 0, NULL, NULL);
+ err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_SQ, data, 0, NULL, NULL);
  if (err != CL_SUCCESS)
  {
     printf("Error: Failed to write to source array!\n");
@@ -142,9 +144,10 @@ fclose(fp);
 
  // Set the arguments to our compute kernel
  err = 0;
+ size_t grid_size= GRID_SIZE;
  err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
- err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &count);
+ err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &grid_size);
 
  if (err != CL_SUCCESS)
  {
@@ -162,29 +165,42 @@ fclose(fp);
 
  // Execute the kernel over the entire range of our 1d input data set
  // using the maximum number of work group items for this device
- global = count;
- err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
- if (err)
- {
-    printf("Error: Failed to execute kernel!\n");
-    return EXIT_FAILURE;
+ global = GRID_SIZE_SQ;
+ local = global; // TODO: FIX nice local work group size
+ printf("local %lu\n",local);
+ size_t iter_max = 2;
+ for (size_t iter = 0; iter < iter_max; iter++){
+    err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &iter);
+    err |= clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    if (err)
+    {
+       printf("Error: Failed to execute kernel!\n");
+       return EXIT_FAILURE;
+    }
  }
 
  // Wait for the command commands to get serviced before reading back results
  clFinish(commands);
 
  // Read back the results from the device to verify the output
- err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * count, results, 0, NULL, NULL );
+ err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * GRID_SIZE_SQ, data2, 0, NULL, NULL );
+
+ err |= clEnqueueReadBuffer( commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_SQ, data, 0, NULL, NULL );
  if (err != CL_SUCCESS)
  {
     printf("Error: Failed to read output array! %d\n", err);
     exit(1);
  }
-
-  // Print obtained results from OpenCL kernel
- for(int i=0; i<count; i++ )
- {
-    printf("result[%d] = %f\n", i, results[i]) ;
+ for (size_t i=0;i<GRID_SIZE_SQ;i++){
+    if(i%GRID_SIZE==0)
+        printf("\n");
+    printf("%f ",data[i]);
+ }
+ printf("\n");
+ for (size_t i=0;i<GRID_SIZE_SQ;i++){
+    if(i%GRID_SIZE==0)
+        printf("\n");
+    printf("%f ",data2[i]);
  }
 
  // Cleaning up
