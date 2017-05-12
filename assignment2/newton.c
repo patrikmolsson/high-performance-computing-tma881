@@ -15,7 +15,7 @@ struct newton_method_args{
   char **colormap;
   char *for_print_attr;
   char *for_print_conv;
-  double **true_roots;
+  float **true_roots;
 };
 
 struct write_method_args{
@@ -25,8 +25,8 @@ struct write_method_args{
   char **for_print_conv;
 };
 
-static const double TOL_CONV = 1e-3;
-static const double TOL_DIV = 10e10;
+static const float TOL_CONV = 1e-3;
+static const float TOL_DIV = 10e10;
 static const size_t CHUNK_SIZE = 50e5;
 static const size_t interval = 2;
 //static const size_t MAX_ITER = 999;
@@ -37,45 +37,55 @@ size_t d = 3;
 size_t grid_size = 1000;
 size_t num_threads = 3;
 size_t block_size;
-void (*newton_pointer)( double*, double*);
+void (*newton_pointer)( float*, float*);
 size_t max_iters_deg[8] = {1,14,49,185,123,197,290,450};
 size_t max_iter;
+short d_even;
 
 int running_thread_write = 0;
 
 
-void newton_iterate1(double *x0_re, double *x0_im){
+void newton_iterate1(float *x0_re, float *x0_im){
 
   *x0_re = 1;
   *x0_im = 0;
 }
 
-void newton_iterate2(double *x0_re, double *x0_im){
+void newton_iterate2(float *x0_re, float *x0_im){
 
-  double r_2 = *x0_re* *x0_re + *x0_im * *x0_im;
+  float r_2 = *x0_re* *x0_re + *x0_im * *x0_im;
   *x0_re = *x0_re * ( 1 + 1.0f/r_2 ) / 2 ;
 
   *x0_im = *x0_im * (1 - 1.0f / r_2 ) / 2 ;
 }
 
-void newton_iterate(double *x0_re, double *x0_im){
+void newton_iterate(float *x0_re, float *x0_im){
 
   // atan2; ensuring principal branch for arg(z).
-  double arg = - atan2(*x0_im,*x0_re) *  (d - 1.0f);
+  float arg = - atan2(*x0_im,*x0_re) *  (d - 1.0f);
   // Magnitude for 1/ ( d x^(d-1) )
-  double r_2 = pow( *x0_re* *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
-  *x0_re = (1 - 1.0f / d) * *x0_re + r_2 * cos(arg);
-  *x0_im = (1 - 1.0f / d) * *x0_im + r_2 * sin(arg);
-  // Previous complex double version for reference:
+  //float r_2 = pow( *x0_re * *x0_re + *x0_im * *x0_im , (1.0f-d)/2 ) / ( d*1.0f )  ;
+
+  float tmp = 1/ (*x0_re * *x0_re + *x0_im * *x0_im);
+  float r_2 = tmp / d;
+  for(size_t i=1; i < (d-1)/2; i++){
+    r_2 *= tmp;
+  }
+  if(d_even == 0 ){
+    r_2 *= sqrt(tmp);
+  }
+  *x0_re = (1 - 1.0f / d) * *x0_re + cos(arg) * r_2;
+  *x0_im = (1 - 1.0f / d) * *x0_im + sin(arg) * r_2;
+  // Previous complex float version for reference:
   //*x_0 = (1.0f - 1.0f / d) * *x_0 + ( 1.0 ) / (  d*1.0f * cpow(*x_0, d - 1) );
 }
 
-void find_true_roots(double ** true_root){
+void find_true_roots(float ** true_root){
   /* One class of polynom: x^d - 1 = 0; => (a) one root always Re(root) = 1; (b) complex roots conjugate  */
   true_root[0][0] = 1.0f;
   true_root[0][1] = 0.0f;
   for(size_t i=1; i<d; i++ ){
-    double arg = i*2*M_PI/d;
+    float arg = i*2*M_PI/d;
     true_root[i][0] = cos(arg);
     true_root[i][1] = sin(arg);
   }
@@ -83,14 +93,14 @@ void find_true_roots(double ** true_root){
 
 void * newton_method(void * pv){
   struct newton_method_args *args = pv;
-  double **true_roots = args->true_roots;
+  float **true_roots = args->true_roots;
   char *colstr;
   char *for_print_attr  = args->for_print_attr;
   char *for_print_conv = args->for_print_conv;
   char **colormap = args->colormap;
   size_t  iter = 0, ix = args->ix;
-  double x0_re, x0_im, x_abs;
-  double incr = 2*(double)interval / grid_size;
+  float x0_re, x0_im, x_abs;
+  float incr = 2*(float)interval / grid_size;
   incr += incr/(grid_size-1);
   int conv;
 
@@ -114,7 +124,7 @@ void * newton_method(void * pv){
 
         if (fabs(1.0f - x_abs) < TOL_CONV ) {
           for(size_t k=0; k<d;k++){
-            if (fabs(pow(x0_re-true_roots[k][0],2) + pow(x0_im-true_roots[k][1],2))  < TOL_CONV){
+            if ( (x0_re-true_roots[k][0]) * (x0_re-true_roots[k][0]) + (x0_im-true_roots[k][1])*(x0_im-true_roots[k][1])  < TOL_CONV * TOL_CONV ){
               conv = k;
             }
           }
@@ -186,7 +196,7 @@ void root_color_map(char **colormap){
 }
 
 int main(int argc, char *argv[]){
-  double ** true_roots;
+  float ** true_roots;
   char ** colormap;
   char *** for_print_attr;
   char *** for_print_conv;
@@ -234,6 +244,7 @@ int main(int argc, char *argv[]){
   }
   else{
     newton_pointer = &newton_iterate;
+    d_even = d % 2;
   }
 
   max_iter = max_iters_deg[d-1];
@@ -279,7 +290,7 @@ int main(int argc, char *argv[]){
   write_args.fp_conv = fp_conv;
 
   int rc;
-  size_t t,ix; //Wanted cool double index, seems to require external prealloc.
+  size_t t,ix; //Wanted cool float index, seems to require external prealloc.
   for_print_attr = malloc(2 * sizeof(char**));
   for_print_attr[0] = malloc(num_threads * sizeof(char*));
   for_print_attr[1] = malloc(num_threads * sizeof(char*));
