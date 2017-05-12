@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,40 @@ int main(int argc, char** argv)
 {
   uint32_t ROWS = 10; // TODO get this from the user
   uint32_t COLS = 3; // TODO get this from the user
+  float initValue = 1e10f;
+  float diffConstant = 0.02f;
+  size_t noOfIterations = 10;
+
+  char arg[10];
+  if (argc > 6)
+    printf("Too many arguments\n");
+
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] == '-') {
+      memset(arg, 0, sizeof(arg));
+      memcpy(arg, &argv[i][2], strlen(argv[i]) - 2);
+      if (argv[i][1] == 'i') {
+        initValue = (float) strtof(arg, NULL);
+      } else if (argv[i][1] == 'd') {
+        diffConstant = (float) strtof(arg, NULL);
+      } else if (argv[i][1] == 'n') {
+        noOfIterations = (size_t) strtol(arg, NULL, 10);
+      } else {
+        printf("Unknown argument %s\n", argv[i]);
+      }
+    } else {
+      // Digit => degrees
+      if (i == 1)
+        COLS = (int) strtol(argv[i], NULL, 10);
+      else if (i == 2)
+        ROWS = (int) strtol(argv[i], NULL, 10);
+      else
+        printf("Too many integer arguments\n");
+    }
+  }
+
+  printf("Arguments\nWidth: %d, Height: %d\ninitValue: %f, diffConstant: %f, noOfIterations: %d\n", COLS, ROWS, initValue, diffConstant, noOfIterations);
+
   uint32_t PADDED_ROWS = (ROWS + 2);
   uint32_t PADDED_COLS = (COLS + 2);
   uint64_t GRID_SIZE = (ROWS * COLS);
@@ -21,13 +56,10 @@ int main(int argc, char** argv)
 
   int err; // error code
 
-  float *data = calloc(sizeof(float), GRID_SIZE_PADDED * 2);
-  unsigned int correct; // number of correct results returned
+  float *data = (float *) calloc(sizeof(float), GRID_SIZE_PADDED * 2);
 
   size_t global; // global domain size
   size_t local; // local domain size
-
-  printf("Init with %u %u %u %u", ROWS, COLS, PADDED_ROWS, PADDED_COLS);
 
   cl_device_id device_id; // compute device id
   cl_context context; // compute context
@@ -36,15 +68,12 @@ int main(int argc, char** argv)
   cl_kernel kernel; // compute kernel
   cl_mem input; // device memory used for the input array
 
-  int innerIndex = GRID_SIZE / 2 - 2 * ((GRID_SIZE + 1) % 2);
-
+  int innerIndex = ( GRID_SIZE % 2 == 0 ) ? GRID_SIZE / 2 - COLS / 2 - 1 : GRID_SIZE / 2;
   int transformedInnerIndex = innerIndex + (PADDED_COLS + 1) + 2 * (innerIndex / (PADDED_COLS - 2));
 
-  data[transformedInnerIndex] = 1e6f;
+  data[transformedInnerIndex] = initValue;
 
-  printf("Indices: %d %d\n", innerIndex, transformedInnerIndex);
-
-   for (size_t i=0;i<GRID_SIZE_PADDED;i++){
+  for (size_t i=0;i<GRID_SIZE_PADDED;i++){
     if(i % PADDED_COLS == 0)
       printf("\n");
     printf("%f ", data[i]);
@@ -150,6 +179,7 @@ int main(int argc, char** argv)
   err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
   err |= clSetKernelArg(kernel, 1, sizeof(uint32_t), &PADDED_ROWS);
   err |= clSetKernelArg(kernel, 2, sizeof(uint32_t), &PADDED_COLS);
+  err |= clSetKernelArg(kernel, 3, sizeof(float), &diffConstant);
 
   if (err != CL_SUCCESS)
   {
@@ -168,11 +198,9 @@ int main(int argc, char** argv)
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
   global = GRID_SIZE;
-  local = 1;
-  printf("local %lu\n", local);
-  size_t iter_max = 2;
-  for (size_t iter = 0; iter < iter_max; iter++){
-    err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &iter);
+
+  for (size_t iter = 0; iter < noOfIterations; iter++){
+    err = clSetKernelArg(kernel, 4, sizeof(unsigned int), &iter);
     err |= clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL, 0, NULL, NULL); // TODO Optimize local (5th arg)
     if (err)
     {

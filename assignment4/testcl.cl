@@ -1,6 +1,5 @@
-__kernel void square( __global float* data, const unsigned int rows, const unsigned int cols, unsigned int iter) {
+__kernel void square( __global float* data, const unsigned int rows, const unsigned int cols, float c, unsigned int iter) {
   float h, h_l, h_r, h_u, h_d;
-  float c = 1.0f/30; //FIXME: kill me
 
   // We transform the indices to match the padded vector
   unsigned int transformedId = get_global_id(0) + (cols + 1) + 2 * (get_global_id(0) / (cols - 2));
