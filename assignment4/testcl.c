@@ -6,7 +6,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <CL/cl.h>
+#ifdef __APPLE__
+  #include <OpenCL/opencl.h>
+#else
+  #include <CL/cl.h>
+#endif
 
 #define MAX_SOURCE_SIZE (0x100000)
 
