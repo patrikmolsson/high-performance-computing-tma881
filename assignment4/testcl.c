@@ -63,7 +63,7 @@ int main(int argc, char** argv)
   float *data = (float *) calloc(sizeof(float), GRID_SIZE_PADDED * 2);
 
   size_t global; // global domain size
-  size_t local; // local domain size
+  size_t local = 32; // local domain size
   size_t transformedId;
   float mean = 0.0f;
 
