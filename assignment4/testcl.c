@@ -66,12 +66,13 @@ int main(int argc, char** argv)
   size_t local; // local domain size
   size_t transformedId;
   float mean = 0.0f;
+  float std = 0.0f;
 
   cl_device_id device_id; // compute device id
   cl_context context; // compute context
   cl_command_queue commands; // compute command queue
   cl_program program; // compute program
-  cl_kernel heat_diff_kernel, sum_kernel; // compute kernels
+  cl_kernel heat_diff_kernel, sum_kernel, std_kernel; // compute kernels
   cl_mem input; // device memory used for the input array
 
   int innerIndex = ( GRID_SIZE % 2 == 0 ) ? GRID_SIZE / 2 - COLS / 2 - 1 : GRID_SIZE / 2;
@@ -159,9 +160,9 @@ int main(int argc, char** argv)
 
   // Create the compute kernel in the program we wish to run
   heat_diff_kernel = clCreateKernel(program, "heat_diff", &err);
-  //sum_kernel = clCreateKernel(program, "inefficient_sum", &err);
   sum_kernel = clCreateKernel(program, "sum", &err);
-  if (!heat_diff_kernel || !sum_kernel || err != CL_SUCCESS)
+  std_kernel = clCreateKernel(program, "std", &err);
+  if (!heat_diff_kernel || !sum_kernel || !std_kernel || err != CL_SUCCESS)
   {
     printf("Error: Failed to create compute kernels!\n");
     exit(1);
@@ -230,7 +231,10 @@ int main(int argc, char** argv)
     exit(1);
   }
   float * partial_sums = (float *) malloc(sizeof(float)*n_partial_sums);
+  float * partial_stds = (float *) malloc(sizeof(float)*n_partial_sums);
+
   cl_mem cl_partial_sums = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float)*n_partial_sums, NULL, &err);
+  cl_mem cl_partial_stds = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float)*n_partial_sums, NULL, &err);
 
   err = 0;
   err = clSetKernelArg(sum_kernel, 0, sizeof(cl_mem), &input);
@@ -272,6 +276,41 @@ int main(int argc, char** argv)
     printf("Error: Failed to read output array! %d\n", err);
     exit(1);
   }
+
+  // CALCULATE STDS
+
+  printf("Init with mean: %f\n", mean);
+  err = 0;
+  err = clSetKernelArg(std_kernel, 0, sizeof(cl_mem), &input);
+  err |= clSetKernelArg(std_kernel, 1, sizeof(cl_mem), &cl_partial_stds);
+  err |= clSetKernelArg(std_kernel, 2, sizeof(float) * local, NULL);
+  err |= clSetKernelArg(std_kernel, 3, sizeof(uint32_t), &PADDED_COLS);
+  err |= clSetKernelArg(std_kernel, 4, sizeof(float), &mean);
+
+  if (err != CL_SUCCESS)
+  {
+    printf("Error: Failed to set mean kernel arguments! %d\n", err);
+    exit(1);
+  }
+
+  err |= clEnqueueNDRangeKernel(commands, std_kernel, 1, NULL, &global, &local, 0, NULL, NULL); // TODO Optimize local (5th arg)
+  clFinish(commands);
+
+  err = clEnqueueReadBuffer(commands, cl_partial_stds, CL_TRUE, 0, sizeof(float)*n_partial_sums, partial_stds, 0, NULL, NULL);
+
+  // Read back the results from the device to verify the output
+  if (err != CL_SUCCESS)
+  {
+    printf("Error: Failed to read output array! %d\n", err);
+    exit(1);
+  }
+
+  for(size_t i = 0; i < n_partial_sums; i++) {
+    std += partial_sums[i];
+  }
+  std /= n_partial_sums;
+
+  printf("STD: %f\n", std);
 
   /*printf("Printing padded\n");
   for (size_t i=0; i < GRID_SIZE_PADDED; i++) {
