@@ -27,7 +27,7 @@ __kernel void sum(__global const float *input, __global float *output, __local f
 
   reductionSums[localID] = input[transformedId];
 
-  for(int offset = localSize / 2; offset > 0; offset /= 2) {
+  for(int offset = localSize >> 1; offset > 0; offset >>= 1) {
     barrier(CLK_LOCAL_MEM_FENCE); // wait for all other work-items to finish previous iteration.
     if(localID < offset) {
       reductionSums[localID] += reductionSums[localID + offset];

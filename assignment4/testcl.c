@@ -63,7 +63,7 @@ int main(int argc, char** argv)
   float *data = (float *) calloc(sizeof(float), GRID_SIZE_PADDED * 2);
 
   size_t global; // global domain size
-  size_t local = 32; // local domain size
+  size_t local; // local domain size
   size_t transformedId;
   float mean = 0.0f;
 
@@ -198,12 +198,12 @@ int main(int argc, char** argv)
   }
 
   // Get the maximum work group size for executing the kernel on the device
-  /*err = clGetKernelWorkGroupInfo(heat_diff_kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+  err = clGetKernelWorkGroupInfo(heat_diff_kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
   if (err != CL_SUCCESS)
   {
     printf("Error: Failed to retrieve kernel work group info! %d\n", err);
     exit(1);
-  }*/
+  }
 
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
@@ -219,7 +219,10 @@ int main(int argc, char** argv)
       return EXIT_FAILURE;
     }
   }
-
+  while (global % local !=0){
+    printf("local %lu\n",local);
+    local = local >> 1;
+  }
   // Time For mean calculation
   size_t n_partial_sums = global / local;
   if (global % local != 0){
