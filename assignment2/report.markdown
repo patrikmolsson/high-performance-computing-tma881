@@ -36,3 +36,7 @@ These strings are then written to the respective file. We implemented this with 
 We introduce a hyper parameter that is the maximal size of easily accessible memory that Ozzy can handle. If we consider this fixed we split the domain $[-2,2][-2i,2i]$ horizontally in chunks of this size. The rows in each chunk is then calculated sequentially by further dividing the rows in the chunk evenly among the number of threads. The threads calculate their part and as soon as the first chunck is ready the writing thread starts writing the strings to file in correct order. The writing of a chunk is much faster than calculating a chunk which means that our slow writing function still has time to finish until it is called again.
 
 Late in the task we realised that we could allocate a structure with $l$ empty strings and an $l$ long integer array containing a status. A thread could allocate one string per row in the string array, calculate this, then mutex mark it as ready to write in the status array and start working on another row. A write thread could lie idle probing for a ready to write call for the first row in order. When one call comes, it writes the row to file, frees the string and begins probing for the next row. However, we were already getting below the benchmarks and were quite busy with the upcoming assignments.
+ 
+
+
+
