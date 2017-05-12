@@ -16,8 +16,8 @@
 
 int main(int argc, char** argv)
 {
-  uint32_t ROWS = 10; // TODO get this from the user
-  uint32_t COLS = 3; // TODO get this from the user
+  uint32_t ROWS = 10000; // TODO get this from the user
+  uint32_t COLS = 100; // TODO get this from the user
   uint32_t PADDED_ROWS = (ROWS + 2);
   uint32_t PADDED_COLS = (COLS + 2);
   uint64_t GRID_SIZE = (ROWS * COLS);
@@ -31,28 +31,28 @@ int main(int argc, char** argv)
   size_t global; // global domain size
   size_t local; // local domain size
 
-  printf("Init with %u %u %u %u", ROWS, COLS, PADDED_ROWS, PADDED_COLS);
+  //printf("Init with %u %u %u %u", ROWS, COLS, PADDED_ROWS, PADDED_COLS);
 
   cl_device_id device_id; // compute device id
   cl_context context; // compute context
   cl_command_queue commands; // compute command queue
   cl_program program; // compute program
-  cl_kernel kernel; // compute kernel
+  cl_kernel heat_diff_kernel, sum_kernel; // compute kernel
   cl_mem input; // device memory used for the input array
 
   int innerIndex = GRID_SIZE / 2 - 2 * ((GRID_SIZE + 1) % 2);
 
   int transformedInnerIndex = innerIndex + (PADDED_COLS + 1) + 2 * (innerIndex / (PADDED_COLS - 2));
 
-  data[transformedInnerIndex] = 1e6f;
+  data[transformedInnerIndex] = 1e10f;
 
-  printf("Indices: %d %d\n", innerIndex, transformedInnerIndex);
+  //printf("Indices: %d %d\n", innerIndex, transformedInnerIndex);
 
-   for (size_t i=0;i<GRID_SIZE_PADDED;i++){
+   /*for (size_t i=0;i<GRID_SIZE_PADDED;i++){
     if(i % PADDED_COLS == 0)
       printf("\n");
     printf("%f ", data[i]);
-  }
+  }*/
 
   printf("\n");
 
@@ -125,10 +125,12 @@ int main(int argc, char** argv)
   }
 
   // Create the compute kernel in the program we wish to run
-  kernel = clCreateKernel(program, "square", &err);
-  if (!kernel || err != CL_SUCCESS)
+  heat_diff_kernel = clCreateKernel(program, "heat_diff", &err);
+  //sum_kernel = clCreateKernel(program, "inefficient_sum", &err);
+  sum_kernel = clCreateKernel(program, "sum", &err);
+  if (!heat_diff_kernel || !sum_kernel || err != CL_SUCCESS)
   {
-    printf("Error: Failed to create compute kernel!\n");
+    printf("Error: Failed to create compute kernels!\n");
     exit(1);
   }
 
@@ -151,9 +153,9 @@ int main(int argc, char** argv)
 
   // Set the arguments to our compute kernel
   err = 0;
-  err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
-  err |= clSetKernelArg(kernel, 1, sizeof(uint32_t), &PADDED_ROWS);
-  err |= clSetKernelArg(kernel, 2, sizeof(uint32_t), &PADDED_COLS);
+  err = clSetKernelArg(heat_diff_kernel, 0, sizeof(cl_mem), &input);
+  err |= clSetKernelArg(heat_diff_kernel, 1, sizeof(uint32_t), &PADDED_ROWS);
+  err |= clSetKernelArg(heat_diff_kernel, 2, sizeof(uint32_t), &PADDED_COLS);
 
   if (err != CL_SUCCESS)
   {
@@ -162,7 +164,7 @@ int main(int argc, char** argv)
   }
 
   // Get the maximum work group size for executing the kernel on the device
-  err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+  err = clGetKernelWorkGroupInfo(heat_diff_kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
   if (err != CL_SUCCESS)
   {
     printf("Error: Failed to retrieve kernel work group info! %d\n", err);
@@ -172,12 +174,11 @@ int main(int argc, char** argv)
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
   global = GRID_SIZE;
-  local = 1;
-  printf("local %lu\n", local);
-  size_t iter_max = 2;
+  local = 16;
+  size_t iter_max = 200;
   for (size_t iter = 0; iter < iter_max; iter++){
-    err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &iter);
-    err |= clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL, 0, NULL, NULL); // TODO Optimize local (5th arg)
+    err = clSetKernelArg(heat_diff_kernel, 3, sizeof(unsigned int), &iter);
+    err |= clEnqueueNDRangeKernel(commands, heat_diff_kernel, 1, NULL, &global, NULL, 0, NULL, NULL); // TODO Optimize local (5th arg)
     if (err)
     {
       printf("Error: Failed to execute kernel!\n");
@@ -196,33 +197,78 @@ int main(int argc, char** argv)
     exit(1);
   }
   // Print padded
-  printf("Printing padded\n");
+  /*printf("Printing padded\n");
   for (size_t i=0; i < GRID_SIZE_PADDED; i++) {
     if(i % PADDED_COLS==0)
       printf("\n");
     printf("%f ",data[i]);
   }
 
-  printf("\n");
-  printf("Printing non-padded\n");
+  printf("\n");*/
+  //printf("Printing non-padded\n");
   // Print unpadded
   size_t transformedId;
+  float mean = 0.0f;
   for (size_t i=0; i < GRID_SIZE;i++){
     transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
 
-    if(i%COLS==0)
-      printf("\n");
+    //if(i%COLS==0)
+    //  printf("\n");
 
-    printf("%f ",data[transformedId]);
+    //printf("%f ",data[transformedId]);
+    mean += data[transformedId];
   }
+  //printf("%s\n", "");
+  mean /= GRID_SIZE;
+  printf("%s %f\n", "mean C layer",mean);
+
+  // Time For mean calculation
+  size_t n_partial_sums = global / local;
+  if (global % local != 0){
+    printf("%s\n", "Watch out partial sums not feeling good.");
+    exit(1);
+  }
+  float * partial_sums = malloc(sizeof(float)*n_partial_sums);
+  cl_mem cl_partial_sums = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float)*n_partial_sums, NULL, &err);
+
+  //Write to device
+  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL); //TODO: If we dont need to read back data before mean, no need to quene this buffer twice
+
+
+  err = 0;
+  err = clSetKernelArg(sum_kernel, 0, sizeof(cl_mem), &input);
+  err |= clSetKernelArg(sum_kernel, 1, sizeof(cl_mem), &cl_partial_sums);
+  err |= clSetKernelArg(sum_kernel, 2, sizeof(float) * local, NULL);
+  err |= clSetKernelArg(sum_kernel, 3, sizeof(uint32_t), &PADDED_COLS);
+
+  if (err != CL_SUCCESS)
+  {
+    printf("Error: Failed to set mean kernel arguments! %d\n", err);
+    exit(1);
+  }
+
+  err |= clEnqueueNDRangeKernel(commands, sum_kernel, 1, NULL, &global, &local, 0, NULL, NULL); // TODO Optimize local (5th arg)
+  clFinish(commands);
+
+  err = clEnqueueReadBuffer(commands, cl_partial_sums, CL_TRUE, 0, sizeof(float)*n_partial_sums, partial_sums, 0, NULL, NULL);
+
+  mean = 0.0f;
+  for(int i = 0; i < n_partial_sums; i++) {
+    mean += partial_sums[i];
+    //printf("partial sums %f\n",partial_sums[i]);
+  }
+  mean /= (n_partial_sums*local);
+  printf("\n%s %f %s %lu\n","Mean GPU", mean, "n_partial_sums:",n_partial_sums);
+
   // Cleaning up
   clReleaseMemObject(input);
   clReleaseProgram(program);
-  clReleaseKernel(kernel);
+  clReleaseKernel(heat_diff_kernel);
   clReleaseCommandQueue(commands);
   clReleaseContext(context);
 
   free(source_str);
+  free(partial_sums);
   free(data);
 
   return 0;
