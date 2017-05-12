@@ -18,29 +18,6 @@ __kernel void heat_diff( __global float* data, const unsigned int rows, const un
   data[((iter + 1) % 2) * cols * rows + i * cols + j] = (1-c)*h+c*(h_l+h_r+h_u+h_d)/4;
 }
 
-__kernel void inefficient_sum(__global const float *input, __global float *output, __local float *reductionSums, const unsigned int cols) {
-  const int globalID = get_global_id(0);
-  const uint transformedId = globalID + (cols + 1) + 2 * (globalID / (cols - 2));
-  const int localID = get_local_id(0);
-  const int localSize = get_local_size(0);
-  const int globalSize = get_global_size(0);
-  const int workgroupID = globalID / localSize;
-  //printf("\nglobal id %d global size %d workgroupid %d local size %d local id %d transformedId%d\n", globalID,globalSize, workgroupID,localSize,localID, transformedId);
-
-  reductionSums[localID] = input[transformedId];
-  //printf("tid %d heat %f in_red %f\n",transformedId, input[transformedId],reductionSums[localID]);
-
-  barrier(CLK_LOCAL_MEM_FENCE); // wait for the rest of the work items to copy the input value to their local memory.
-  if(localID == 2) {
-    float sum = 0;
-    for(int i = 2; i > -1; i--) {
-        sum += reductionSums[i];
-    }
-    printf("\n sum %f\n",sum);
-    output[workgroupID] = sum;
-  }
-}
-
 __kernel void sum(__global const float *input, __global float *output, __local float *reductionSums, const unsigned int cols) {
   const int globalID = get_global_id(0);
   const uint transformedId = globalID + (cols + 1) + 2 * (globalID / (cols - 2));
@@ -55,6 +32,7 @@ __kernel void sum(__global const float *input, __global float *output, __local f
     barrier(CLK_LOCAL_MEM_FENCE); // wait for all other work-items to finish previous iteration.
     if(localID < offset) {
       reductionSums[localID] += reductionSums[localID + offset];
+      reductionSums[localID] /= 2;
     }
   }
 

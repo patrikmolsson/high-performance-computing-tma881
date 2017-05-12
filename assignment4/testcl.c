@@ -30,6 +30,8 @@ int main(int argc, char** argv)
 
   size_t global; // global domain size
   size_t local; // local domain size
+  size_t transformedId;
+  float mean = 0.0f;
 
   //printf("Init with %u %u %u %u", ROWS, COLS, PADDED_ROWS, PADDED_COLS);
 
@@ -37,7 +39,7 @@ int main(int argc, char** argv)
   cl_context context; // compute context
   cl_command_queue commands; // compute command queue
   cl_program program; // compute program
-  cl_kernel heat_diff_kernel, sum_kernel; // compute kernel
+  cl_kernel heat_diff_kernel, sum_kernel; // compute kernels
   cl_mem input; // device memory used for the input array
 
   int innerIndex = GRID_SIZE / 2 - 2 * ((GRID_SIZE + 1) % 2);
@@ -164,12 +166,12 @@ int main(int argc, char** argv)
   }
 
   // Get the maximum work group size for executing the kernel on the device
-  err = clGetKernelWorkGroupInfo(heat_diff_kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+  /*err = clGetKernelWorkGroupInfo(heat_diff_kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
   if (err != CL_SUCCESS)
   {
     printf("Error: Failed to retrieve kernel work group info! %d\n", err);
     exit(1);
-  }
+  }*/
 
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
@@ -186,42 +188,6 @@ int main(int argc, char** argv)
     }
   }
 
-  // Wait for the command commands to get serviced before reading back results
-  clFinish(commands);
-
-  // Read back the results from the device to verify the output
-  err |= clEnqueueReadBuffer( commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL );
-  if (err != CL_SUCCESS)
-  {
-    printf("Error: Failed to read output array! %d\n", err);
-    exit(1);
-  }
-  // Print padded
-  /*printf("Printing padded\n");
-  for (size_t i=0; i < GRID_SIZE_PADDED; i++) {
-    if(i % PADDED_COLS==0)
-      printf("\n");
-    printf("%f ",data[i]);
-  }
-
-  printf("\n");*/
-  //printf("Printing non-padded\n");
-  // Print unpadded
-  size_t transformedId;
-  float mean = 0.0f;
-  for (size_t i=0; i < GRID_SIZE;i++){
-    transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
-
-    //if(i%COLS==0)
-    //  printf("\n");
-
-    //printf("%f ",data[transformedId]);
-    mean += data[transformedId];
-  }
-  //printf("%s\n", "");
-  mean /= GRID_SIZE;
-  printf("%s %f\n", "mean C layer",mean);
-
   // Time For mean calculation
   size_t n_partial_sums = global / local;
   if (global % local != 0){
@@ -230,10 +196,6 @@ int main(int argc, char** argv)
   }
   float * partial_sums = malloc(sizeof(float)*n_partial_sums);
   cl_mem cl_partial_sums = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float)*n_partial_sums, NULL, &err);
-
-  //Write to device
-  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL); //TODO: If we dont need to read back data before mean, no need to quene this buffer twice
-
 
   err = 0;
   err = clSetKernelArg(sum_kernel, 0, sizeof(cl_mem), &input);
@@ -251,14 +213,48 @@ int main(int argc, char** argv)
   clFinish(commands);
 
   err = clEnqueueReadBuffer(commands, cl_partial_sums, CL_TRUE, 0, sizeof(float)*n_partial_sums, partial_sums, 0, NULL, NULL);
+  err |= clEnqueueReadBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL );
 
   mean = 0.0f;
   for(int i = 0; i < n_partial_sums; i++) {
     mean += partial_sums[i];
     //printf("partial sums %f\n",partial_sums[i]);
   }
-  mean /= (n_partial_sums*local);
+  mean /= n_partial_sums;
   printf("\n%s %f %s %lu\n","Mean GPU", mean, "n_partial_sums:",n_partial_sums);
+
+  mean = 0.0f;
+  for (size_t i=0; i < GRID_SIZE;i++){
+    transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
+    mean += data[transformedId] / GRID_SIZE;
+  }
+  //mean /= GRID_SIZE;
+  printf("%s %f\n", "mean C layer",mean);
+
+  // Read back the results from the device to verify the output
+  if (err != CL_SUCCESS)
+  {
+    printf("Error: Failed to read output array! %d\n", err);
+    exit(1);
+  }
+
+  /*printf("Printing padded\n");
+  for (size_t i=0; i < GRID_SIZE_PADDED; i++) {
+    if(i % PADDED_COLS==0)
+      printf("\n");
+    printf("%f ",data[i]);
+  }
+  printf("\n");
+  //printf("Printing non-padded\n");
+  size_t transformedId;
+  for (size_t i=0; i < GRID_SIZE;i++){
+    transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
+
+    if(i%COLS==0)
+      printf("\n");
+    printf("%f ",data[transformedId]);
+  }
+  printf("%s\n", "");*/
 
   // Cleaning up
   clReleaseMemObject(input);
