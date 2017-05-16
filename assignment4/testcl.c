@@ -221,7 +221,6 @@ int main(int argc, char** argv)
     }
   }
   while (global % local !=0){
-    printf("local %lu\n",local);
     local = local >> 1;
   }
   // Time For mean calculation
@@ -254,14 +253,20 @@ int main(int argc, char** argv)
   err = clEnqueueReadBuffer(commands, cl_partial_sums, CL_TRUE, 0, sizeof(float)*n_partial_sums, partial_sums, 0, NULL, NULL);
   err |= clEnqueueReadBuffer(commands, input, CL_TRUE, 0, sizeof(float) * GRID_SIZE_PADDED * 2, data, 0, NULL, NULL );
 
+  if (err != CL_SUCCESS)
+  {
+    printf("Error: Failed to read output array! %d\n", err);
+    exit(1);
+  }
+
   mean = 0.0f;
   for(size_t i = 0; i < n_partial_sums; i++) {
     mean += partial_sums[i];
-    //printf("partial sums %f\n",partial_sums[i]);
   }
   mean /= n_partial_sums;
-  printf("\n%s %f %s %lu\n","Mean GPU", mean, "n_partial_sums:",n_partial_sums);
+  printf("%s %.2f\n","Mean:", mean);
 
+  /*
   mean = 0.0f;
   for (size_t i=0; i < GRID_SIZE;i++){
     transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
@@ -269,13 +274,9 @@ int main(int argc, char** argv)
   }
   //mean /= GRID_SIZE;
   printf("%s %f\n", "mean C layer",mean);
+  */
 
   // Read back the results from the device to verify the output
-  if (err != CL_SUCCESS)
-  {
-    printf("Error: Failed to read output array! %d\n", err);
-    exit(1);
-  }
 
   // CALCULATE STDS
 
@@ -309,7 +310,7 @@ int main(int argc, char** argv)
   }
   std /= n_partial_sums;
 
-  printf("STD: %f\n", std);
+  printf("STD: %.2f\n", std);
 
 /*
   for (size_t i=0; i < GRID_SIZE;i++){
