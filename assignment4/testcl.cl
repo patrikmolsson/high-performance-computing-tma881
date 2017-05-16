@@ -48,14 +48,13 @@ __kernel void std(__global const float *input, __global float *output, __local f
   const int localSize = get_local_size(0);
   const int globalSize = get_global_size(0);
   const int workgroupID = globalID / localSize;
-  printf("average %f\n", average);
 
   reductionStds[localID] = fabs(input[transformedId] - average);
 
   for(int offset = localSize >> 1; offset > 0; offset >>= 1) {
     barrier(CLK_LOCAL_MEM_FENCE); // wait for all other work-items to finish previous iteration.
     if(localID < offset) {
-      reductionStds[localID] += fabs(reducionStds[localID + offset] - average);
+      reductionStds[localID] += fabs(reductionStds[localID + offset] - average);
       reductionStds[localID] /= 2;
     }
   }

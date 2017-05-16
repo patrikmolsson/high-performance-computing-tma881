@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     }
   }
 
-  printf("Arguments\nWidth: %d, Height: %d\ninitValue: %f, diffConstant: %f, noOfIterations: %lu\n", COLS, ROWS, initValue, diffConstant, noOfIterations);
+  // printf("Arguments\nWidth: %d, Height: %d\ninitValue: %f, diffConstant: %f, noOfIterations: %lu\n", COLS, ROWS, initValue, diffConstant, noOfIterations);
 
   uint32_t PADDED_ROWS = (ROWS + 2);
   uint32_t PADDED_COLS = (COLS + 2);
@@ -279,7 +279,6 @@ int main(int argc, char** argv)
 
   // CALCULATE STDS
 
-  printf("Init with mean: %f\n", mean);
   err = 0;
   err = clSetKernelArg(std_kernel, 0, sizeof(cl_mem), &input);
   err |= clSetKernelArg(std_kernel, 1, sizeof(cl_mem), &cl_partial_stds);
@@ -306,29 +305,20 @@ int main(int argc, char** argv)
   }
 
   for(size_t i = 0; i < n_partial_sums; i++) {
-    std += partial_sums[i];
+    std += partial_stds[i];
   }
   std /= n_partial_sums;
 
   printf("STD: %f\n", std);
 
-  /*printf("Printing padded\n");
-  for (size_t i=0; i < GRID_SIZE_PADDED; i++) {
-    if(i % PADDED_COLS==0)
-      printf("\n");
-    printf("%f ",data[i]);
-  }
-  printf("\n");
-  //printf("Printing non-padded\n");
-  size_t transformedId;
+/*
   for (size_t i=0; i < GRID_SIZE;i++){
     transformedId = i + (PADDED_COLS + 1) + 2 * (i / (COLS));
 
     if(i%COLS==0)
       printf("\n");
     printf("%f ",data[transformedId]);
-  }
-  printf("%s\n", "");*/
+  } */
 
   // Cleaning up
   clReleaseMemObject(input);
