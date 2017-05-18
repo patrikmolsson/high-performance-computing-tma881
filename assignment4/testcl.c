@@ -264,7 +264,7 @@ int main(int argc, char** argv)
     mean += partial_sums[i];
   }
   mean /= n_partial_sums;
-  printf("%s %.2f\n","Mean:", mean);
+  printf("%s %.5e\n","average:", mean);
 
   /*
   mean = 0.0f;
@@ -277,7 +277,6 @@ int main(int argc, char** argv)
   */
 
   // Read back the results from the device to verify the output
-
   // CALCULATE STDS
 
   err = 0;
@@ -310,7 +309,7 @@ int main(int argc, char** argv)
   }
   std /= n_partial_sums;
 
-  printf("STD: %.2f\n", std);
+  printf("average absolute difference: %.5e\n", std);
 
 /*
   for (size_t i=0; i < GRID_SIZE;i++){
