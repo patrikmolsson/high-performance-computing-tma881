@@ -4,8 +4,7 @@ CC = gcc
 INCLOC = -I/usr/local/cuda-7.5/targets/x86_64-linux/include
 LIBLOC = -L/usr/local/cuda-7.5/targets/x86_64-linux/lib
 LIBS = -lOpenCL
-OPTIM =
-
+OPTIM = -march=native -O3
 .PHONY : all
 
 all : heat_diffusion
