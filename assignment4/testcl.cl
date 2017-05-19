@@ -1,4 +1,4 @@
-__kernel void heat_diff( __global float* data, const uint rows, const uint cols, float c, uint iter) {
+__kernel void heat_diff( __global float* data, const uint rows, const uint cols, float c, uint iter){
   const uint transformedId = get_global_id(0) + (cols + 1) + 2 * (get_global_id(0) / (cols - 2));
   const uint i = transformedId / cols;
   const uint j = transformedId % cols;
@@ -13,7 +13,7 @@ __kernel void heat_diff( __global float* data, const uint rows, const uint cols,
   data[((iter + 1) % 2) * cols * rows + i * cols + j] = (1-c)*h+c*(h_l+h_r+h_u+h_d)/4;
 }
 
-__kernel void sum(__global const float *input, __global float *output, __local float *reductionSums, const uint cols) {
+__kernel void sum(__global const float *input, __global float *output, __local float *reductionSums, const uint cols){
   const uint globalID = get_global_id(0);
   const uint transformedId = globalID + (cols + 1) + 2 * (globalID / (cols - 2));
   const uint localID = get_local_id(0);
@@ -22,20 +22,20 @@ __kernel void sum(__global const float *input, __global float *output, __local f
 
   reductionSums[localID] = input[transformedId];
 
-  for(int offset = localSize >> 1; offset > 0; offset >>= 1) {
+  for(int offset = localSize >> 1; offset > 0; offset >>= 1){
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(localID < offset) {
+    if(localID < offset){
       reductionSums[localID] += reductionSums[localID + offset];
       reductionSums[localID] /= 2;
     }
   }
 
-  if(localID == 0) {
+  if(localID == 0){
     output[workgroupID] = reductionSums[0];
   }
 }
 
-__kernel void std(__global const float *input, __global float *output, __local float *reductionStds, const uint cols, const float average) {
+__kernel void std(__global const float *input, __global float *output, __local float *reductionStds, const uint cols, const float average){
   const uint globalID = get_global_id(0);
   const uint transformedId = globalID + (cols + 1) + 2 * (globalID / (cols - 2));
   const uint localID = get_local_id(0);
@@ -44,15 +44,15 @@ __kernel void std(__global const float *input, __global float *output, __local f
 
   reductionStds[localID] = fabs(input[transformedId] - average);
 
-  for(int offset = localSize >> 1; offset > 0; offset >>= 1) {
+  for(int offset = localSize >> 1; offset > 0; offset >>= 1){
     barrier(CLK_LOCAL_MEM_FENCE);
-    if(localID < offset) {
+    if(localID < offset){
       reductionStds[localID] += reductionStds[localID + offset];
       reductionStds[localID] /= 2;
     }
   }
 
-  if(localID == 0) {
+  if(localID == 0){
     output[workgroupID] = reductionStds[0];
   }
 }
