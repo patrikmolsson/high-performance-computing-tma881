@@ -9,15 +9,16 @@ typedef struct{
   unsigned long nachbar_id;
 }nachbar_node;
 
-const unsigned long  n_vertices = 8; // max(n_vertices) = 1e5
-const unsigned short degree = 3;
+const unsigned long  n_vertices = 1000; // max(n_vertices) = 1e5
+const unsigned short degree = 10;
 
 void read_adjacency(nachbar_node **nachbar_nodes){
   unsigned long i,j,lines=0; // 0 < i,j < n_vertices; lines dependent on number of connections. Need scan
   unsigned short dist; // 0 < dist < 100
   int fscan;
-  char* filename = "test_data/test_graph";
-
+  //char* filename = "test_data/test_graph";
+  
+  char* filename = "test_data/graph_de1_ne3_we2";
   FILE *fp = fopen(filename, "r");
 
   char ch = 0;
@@ -114,7 +115,7 @@ void master(unsigned long source, unsigned long target){
   
   current_id = target;
   // printf("current id: %lu, s:  %lu, t: %lu \n",current_id,source,target);
-  printf("True path: ");
+  printf("True path: %lu <-- ", target);
   while(current_id != source){
     printf("%lu",tentative_distance[current_id][1]);
     current_id = tentative_distance[current_id][1];
@@ -139,8 +140,8 @@ void master(unsigned long source, unsigned long target){
 }
 
 int main(int argc, char** argv) {
-  unsigned long source = 1;
-  unsigned long target = 0;
+  unsigned long source = 9;
+  unsigned long target = 82;
   // Initialize the MPI environment
   MPI_Init(NULL, NULL);
 
