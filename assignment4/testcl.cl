@@ -55,7 +55,7 @@ __kernel void std(__global const float *input, __global float *output, __local f
     barrier(CLK_LOCAL_MEM_FENCE); // wait for all other work-items to finish previous iteration.
     if(localID < offset) {
       reductionStds[localID] += reductionStds[localID + offset];
-      reductionStds[localID] /= 2;
+      reductionStds[localID] /=  2;
     }
   }
 
