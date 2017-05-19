@@ -73,7 +73,7 @@ int main(int argc, char** argv)
   data[transformedInnerIndex] = initValue;
 
   FILE *fp;
-  char fileName[] = "./testcl.cl";
+  char fileName[] = "./heat_diffusion.cl";
   char *source_str;
   size_t source_size;
 
