@@ -29,7 +29,7 @@ const int NOT_VISITED = 1;
 const int REVISIT = 2;
 const int BEEN_REVISITED = 3;
 
-char filename[1000] = "test_data/test_graph";
+char filename[1000];
 
 nachbar_node **nachbar_nodes; // Create adjacency matrix
 
@@ -123,6 +123,7 @@ void read_adjacency(){
   unsigned long i, j, prev_i = 0;
   unsigned short dist; // 0 < dist < 100
   int fscan;
+  printf("Opening file %s\n", filename);
   FILE *fp = fopen(filename, "r");
 
   unsigned short nachbar_count = 0;
@@ -297,7 +298,7 @@ void startMethod(){
   }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
   // Initialize the MPI environment
   MPI_Init(&argc, &argv);
 
@@ -307,9 +308,7 @@ int main(int argc, char** argv) {
     else if (i == 2)
       target = strtol(argv[i], NULL, 10);
     else if (i == 3) {
-      memset(filename, 0, sizeof(filename));
-      memcpy(filename, &argv[i], strlen(argv[i]));
-
+      strcpy(filename, argv[i]);
     }
   }
 
