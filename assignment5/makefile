@@ -2,7 +2,7 @@ SOURCE = dijkstra.c
 OUTPUT = dijkstra
 CC = mpicc
 LIBS =  -lm
-OPTIM =
+OPTIM = -Ofast
 OTHERFLAGS =
 
 .PHONY : all
