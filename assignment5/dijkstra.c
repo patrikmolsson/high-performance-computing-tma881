@@ -35,6 +35,30 @@ FILE *fp;
 
 nachbar_node **nachbar_nodes;
 
+int malloc2dnb(nachbar_node ***array, int n, int m) {
+  nachbar_node *p = (nachbar_node *) malloc(n * m * sizeof(nachbar_node));
+  if (!p) return -1;
+
+  (*array) = (nachbar_node **) malloc(n * sizeof(nachbar_node *));
+  if (!(*array)) {
+    free(p);
+    return -1;
+  }
+
+  for (int i = 0; i < n; i++)
+    (*array)[i] = &(p[i * m]);
+
+  return 0;
+}
+
+int free2dnb(nachbar_node ***array) {
+  free(&((*array)[0][0]));
+
+  free(*array);
+
+  return 0;
+}
+
 void reduceDistance (void * in, void * inout, int * len, MPI_Datatype * mp) {
   dijkstra_datum * inLong = (dijkstra_datum *) in;
   dijkstra_datum * inoutLong = (dijkstra_datum *) inout;
@@ -246,11 +270,7 @@ int main(int argc, char* argv[]) {
   MPI_Bcast(&n_vertices, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
   MPI_Bcast(&degree, 1, MPI_UNSIGNED_SHORT, 0, MPI_COMM_WORLD);
 
-  nachbar_nodes = malloc(n_vertices * sizeof *nachbar_nodes);
-
-  for(unsigned int i = 0; i < n_vertices; i++ ){
-    nachbar_nodes[i] = malloc(degree * sizeof *nachbar_nodes[i]);
-  }
+  malloc2dnb(&nachbar_nodes, n_vertices, degree);
 
   if (world_rank == 0)
     read_adjacency();
@@ -282,10 +302,7 @@ int main(int argc, char* argv[]) {
   MPI_Type_free(&dType);
   MPI_Finalize();
 
-  for(unsigned int i = 0; i < n_vertices; i++ ){
-    free(nachbar_nodes[i]);
-  }
-  free(nachbar_nodes);
+  free2dnb(&nachbar_nodes);
 
   return 0;
 }
