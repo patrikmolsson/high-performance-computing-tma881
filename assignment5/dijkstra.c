@@ -29,7 +29,7 @@ const int NOT_VISITED = 1;
 const int REVISIT = 2;
 const int BEEN_REVISITED = 3;
 
-char filename[] = "test_data/test_graph";
+char filename[1000] = "test_data/test_graph";
 
 nachbar_node **nachbar_nodes; // Create adjacency matrix
 
