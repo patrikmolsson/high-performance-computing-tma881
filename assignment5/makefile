@@ -15,4 +15,4 @@ dijkstra : $(SOURCE)
 $(OBJS) : $(SOURCE)
 
 clean:
-	#@ls | grep -v -E '(makefile|draw_graph.py|^$(SOURCE)|^$(SOURCE)$$)' | xargs rm -f
+	@rm -f $(OUTPUT)
