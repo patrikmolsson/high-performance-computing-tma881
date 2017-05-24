@@ -14,6 +14,23 @@ typedef struct{
 const unsigned int  n_vertices = 8; // max(n_vertices) = 1e5
 const unsigned short degree = 3;
 
+void reduceDistance (void * in, void * inout, int * len, MPI_Datatype * mp) {
+  long * inLong = (long *) in;
+  long * inoutLong = (long *) inout;
+
+  int inIsMin = 0;
+  for (int i = 0; i < *(len) / 2; i++) {
+    inIsMin = inLong[i] < inoutLong[i] ? 1 : 0;
+
+    printf("I: %d, In %d %d, \t\tinout %d %d\n", i, inLong[i], inLong[i + (*len)/2], inoutLong[i], inoutLong[i + (*len)/2]);
+
+    if (inIsMin > 0) {
+      inoutLong[i] = inLong[i];
+      inoutLong[i + (*len) / 2] = inLong[i + (*len) / 2];
+    }
+  }
+}
+
 void read_adjacency(nachbar_node **nachbar_nodes){
   unsigned long i,j,lines=0; // 0 < i,j < n_vertices; lines dependent on number of connections. Need scan
   unsigned short dist; // 0 < dist < 100
@@ -50,13 +67,14 @@ void read_adjacency(nachbar_node **nachbar_nodes){
   fclose(fp);
 }
 
-void printPath(int target, int source, unsigned long *tentative_distance) {
+void printPath(int target, int source, unsigned long tentative_distance[]) {
+  printf("Into printpath");
   int current_id = target;
   unsigned long shortest_distance = tentative_distance[current_id];
   // printf("current id: %lu, s:  %lu, t: %lu \n",current_id,source,target);
   int  n_steps = 0;
   while(current_id != source){
-    n_steps ++;
+    n_steps++;
     current_id = tentative_distance[current_id + n_vertices];
   }
 
@@ -99,8 +117,7 @@ void startMethod(unsigned int source, unsigned int target){
 
   read_adjacency(nachbar_nodes);
 
-  unsigned long *tentative_distance; //Storing tentative
-  tentative_distance = malloc(2 * n_vertices * sizeof *tentative_distance);
+  unsigned long tentative_distance[n_vertices * 2]; //Storing tentative
   // First half distances
   // Second half source
 
@@ -112,12 +129,14 @@ void startMethod(unsigned int source, unsigned int target){
   tentative_distance[source] = 0;
   tentative_distance[source + n_vertices] = -1;
 
-  short *unvisited_set; //Unvisited neighbours
-  unvisited_set = (short *) calloc(n_vertices, sizeof *unvisited_set);
+  int unvisited_set[n_vertices];
 
   for(unsigned int i = 0; i < n_vertices; i++ ){
     unvisited_set[i] = 1;
   }
+
+  MPI_Op tentDistOp;
+  MPI_Op_create(reduceDistance, 1, &tentDistOp);
   // STOP INIT VARIABLES
 
   // Get the number of processes
@@ -135,35 +154,35 @@ void startMethod(unsigned int source, unsigned int target){
   }
 
   int block_size = n_vertices / world_size;
+  int loop = 1;
 
-  while(1){
+  while(loop == 1){
     // BROADCAST FROM MASTER IF BREAK
     //
     //MPI_Bcast(unvisited_set, n_vertices, MPI_UNSIGNED_SHORT, 0, MPI_COMM_WORLD);
   //  MPI_Bcast(tentative_distance, 2 * n_vertices, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
 
-    for(unsigned int i = 0; i < n_vertices; i++ ){
-      printf("Before: Index %d, Value %d, Rank %d\n", i, unvisited_set[i], world_rank);
-    }
-
     //if (world_rank == 0)
     //  MPI_Reduce(MPI_IN_PLACE, &unvisited_set, n_vertices, MPI_SHORT, MPI_MIN, 0, MPI_COMM_WORLD);
     //else
     //  MPI_Reduce(&unvisited_set, &unvisited_set, n_vertices, MPI_SHORT, MPI_MIN, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &unvisited_set, n_vertices, MPI_SHORT, MPI_MIN, MPI_COMM_WORLD);
-    //MPI_Allreduce(MPI_IN_PLACE, &tentative_distance, 2 * n_vertices, MPI_UNSIGNED_LONG, MPI_MIN, MPI_COMM_WORLD);
+    printf("Waiting for reduce %d\n", world_rank);
+    MPI_Allreduce(MPI_IN_PLACE, &unvisited_set, n_vertices, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &tentative_distance, 2 * n_vertices, MPI_UNSIGNED_LONG, tentDistOp, MPI_COMM_WORLD);
 
     printf("All reduce finished %d\n", world_rank);
 
     int sum = 0;
     // for(int i = world_rank * block_size; i < (world_rank + 1) * block_size; i++ ){
     for(unsigned int i = 0; i < n_vertices; i++ ){
-      printf("After: Index %d, Value %d, Rank %d\n", i, unvisited_set[i], world_rank);
       sum += unvisited_set[i];
     }
-    printf("Sum calculated %d\n", sum);
-    if (sum == 0)
+    printf("Sum calculated %d, rank %d\n", sum, world_rank);
+    if (sum == 0) {
+      printf("Breaking loop %d\n", world_rank);
+      MPI_Barrier(MPI_COMM_WORLD);
       break;
+    }
 
 
     /*
@@ -186,18 +205,21 @@ void startMethod(unsigned int source, unsigned int target){
       }
     }
     if (current_id != n_vertices) {
+      printf("Visiting %d\n", current_id);
       dijkstra(current_id, nachbar_nodes, tentative_distance);
       unvisited_set[current_id] = 0;
     }
   }
 
+  printf("Exiting while loop %d\n", world_rank);
   // PRINT RESULTS
-  if (world_rank == 0)
+  if (world_rank == 0) {
+    printf("Starting printpath");
     printPath(target, source, tentative_distance);
+  }
 
-  free(unvisited_set);
 
-  free(tentative_distance);
+
   for(unsigned int i = 0; i < n_vertices; i++ ){
     free(nachbar_nodes[i]);
   }
@@ -217,6 +239,7 @@ int main(int argc, char** argv) {
   MPI_Get_processor_name(processor_name, &name_len);
   startMethod(source, target); 
   // Finalize the MPI environment.
-  MPI_Barrier(MPI_COMM_WORLD);
   MPI_Finalize();
+
+  return 0;
 }
