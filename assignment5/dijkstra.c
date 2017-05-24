@@ -6,19 +6,19 @@
 
 typedef struct{
   unsigned short distance;
-  unsigned long nachbar_id;
+  unsigned int nachbar_id;
 }nachbar_node;
 
-const unsigned long  n_vertices = 1000; // max(n_vertices) = 1e5
-const unsigned short degree = 10;
+const unsigned int  n_vertices = 8; // max(n_vertices) = 1e5
+const unsigned short degree = 3;
 
 void read_adjacency(nachbar_node **nachbar_nodes){
   unsigned long i,j,lines=0; // 0 < i,j < n_vertices; lines dependent on number of connections. Need scan
   unsigned short dist; // 0 < dist < 100
   int fscan;
-  //char* filename = "test_data/test_graph";
+  char* filename = "test_data/test_graph";
   
-  char* filename = "test_data/graph_de1_ne3_we2";
+  //char* filename = "test_data/graph_de2_ne4_we2";
   FILE *fp = fopen(filename, "r");
 
   char ch = 0;
@@ -50,7 +50,7 @@ void read_adjacency(nachbar_node **nachbar_nodes){
 }
 
 // Method for every slave process. 
-void slave(unsigned long current_id, nachbar_node **nachbar_nodes, unsigned long **tentative_distance){ 
+void slave(unsigned int current_id, nachbar_node **nachbar_nodes, unsigned long **tentative_distance){ 
   nachbar_node nachbar;
   for(unsigned short i = 0; i < degree; i++  ){
     nachbar = nachbar_nodes[current_id][i];
@@ -63,8 +63,8 @@ void slave(unsigned long current_id, nachbar_node **nachbar_nodes, unsigned long
 }
 
 // Method for master process
-void master(unsigned long source, unsigned long target){
-  printf("\n Finding shortest distance from node %lu to node %lu \n \n",source,target);
+void master(unsigned int source, unsigned int target){
+  printf("\nFinding shortest distance from node %u to node %u \n \n",source,target);
   nachbar_node **nachbar_nodes; // Create adjacency matrix
   nachbar_nodes = malloc(n_vertices * sizeof *nachbar_nodes);
   
@@ -91,7 +91,7 @@ void master(unsigned long source, unsigned long target){
   for(int i = 0; i < n_vertices; i++ ){
     unvisited_set[i] = 1;
   }
-  unsigned long current_id = source;
+  unsigned int current_id = source;
   unvisited_set[current_id] = 0;
 
   slave(current_id, nachbar_nodes, tentative_distance);
@@ -100,7 +100,7 @@ void master(unsigned long source, unsigned long target){
     //printf("In while\n");
     current_id = n_vertices;
     unsigned long tmp_min = INFINITY; 
-    for(unsigned long i = 0; i < n_vertices; i++ ){
+    for(unsigned int i = 0; i < n_vertices; i++ ){
       //printf("Checking node %lu \n", i);
       if(tentative_distance[i][0] < tmp_min && unvisited_set[i]> 0 ){
         tmp_min = tentative_distance[i][0];
@@ -113,19 +113,28 @@ void master(unsigned long source, unsigned long target){
     unvisited_set[current_id] = 0;
   }
   
+
+  // PRINT RESULTS
   current_id = target;
+  unsigned long shortest_distance = tentative_distance[current_id][0];
   // printf("current id: %lu, s:  %lu, t: %lu \n",current_id,source,target);
-  printf("True path: %lu <-- ", target);
+  int  n_steps = 0;
   while(current_id != source){
-    printf("%lu",tentative_distance[current_id][1]);
+    n_steps ++;
     current_id = tentative_distance[current_id][1];
-    if(current_id != source)
-      printf(" <-- ");
-    else
-      printf("\n");
   }
 
-
+  current_id = target;
+  unsigned int steps[n_steps];
+  for(int i = n_steps-1; i >= 0; i--){
+    steps[i] = tentative_distance[current_id][1];
+    current_id = tentative_distance[current_id][1]; 
+  }
+  printf("Shortest distance: %lu \nTrue and actual path: ",shortest_distance);//
+  for(unsigned int i = 0; i<n_steps; i++ ){
+    printf("%u -> ",steps[i]);
+  }
+  printf("%u\n",target);
 
   free(unvisited_set);
 
@@ -140,19 +149,20 @@ void master(unsigned long source, unsigned long target){
 }
 
 int main(int argc, char** argv) {
-  unsigned long source = 9;
-  unsigned long target = 82;
+  unsigned int source = 5;
+  unsigned int target = 4;
   // Initialize the MPI environment
-  MPI_Init(NULL, NULL);
+  MPI_Init(&argc, &argv);
 
   // Get the number of processes
   int world_size;
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
+  //printf("Number of proc? %d \n", world_size); 
+  
   // Get the rank of the process
   int world_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-
+  //printf("Proc ID: %d", world_rank);
   // Get the name of the processor
   char processor_name[MPI_MAX_PROCESSOR_NAME];
   int name_len;
