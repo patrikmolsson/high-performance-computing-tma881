@@ -19,7 +19,7 @@ date: May 19th 2017
 
 ## Representing the graph
 
-To represent the graph we use a 2D array, nachbar_nodes. For every row in the array, the connected vertices to the base vertex (the vertex with the corresponding ID to the array row index) are represented, it's nachbar's. The connected vertices holds the information about the distance from the vertex to the base vertex, as well as their ID's.
+To represent the graph we use a 2D array, ```nachbar_nodes``` (who can spell neighbour, amirite?). For every row in the array, the connected vertices to the base vertex (the vertex with the corresponding ID to the array row index) are represented, it's nachbars. The connected vertices holds the information about the distance from the vertex to the base vertex, as well as their ID's.
 
 Another array used is the one that holds the result from the dijkstra algorithm itself, dijkstra_data. The array holds, for each vertex, the information if it has been or shall be visited by the dijkstra algorithm, the tentative distance to that vertex, as well as from which vertex the shortest tentative distance to that vertex has been calculated so far.
 
