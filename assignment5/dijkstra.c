@@ -30,6 +30,8 @@ const int REVISIT = 2;
 const int BEEN_REVISITED = 3;
 
 char filename[1000];
+MPI_Datatype dType;
+MPI_Op tentDistOp;
 
 nachbar_node **nachbar_nodes; // Create adjacency matrix
 
@@ -191,12 +193,6 @@ void startMethod(){
     dijkstra_data[i].status = NOT_VISITED;
   }
 
-  MPI_Op tentDistOp;
-  MPI_Op_create(reduceDistance, 1, &tentDistOp);
-
-  MPI_Datatype dType;
-  MPI_Type_contiguous(3, MPI_UNSIGNED_LONG, &dType);
-  MPI_Type_commit(&dType);
   // STOP INIT VARIABLES
 
   // Get the number of processes
@@ -354,9 +350,15 @@ int main(int argc, char* argv[]) {
 //    }
 //  }
 
+  MPI_Op_create(reduceDistance, 1, &tentDistOp);
+
+  MPI_Type_contiguous(3, MPI_UNSIGNED_LONG, &dType);
+  MPI_Type_commit(&dType);
+
   startMethod();
   // Finalize the MPI environment.
   MPI_Type_free(&mpi_nn);
+  MPI_Type_free(&dType);
   MPI_Finalize();
 
   for(unsigned int i = 0; i < n_vertices; i++ ){
