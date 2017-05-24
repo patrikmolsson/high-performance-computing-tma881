@@ -11,22 +11,34 @@ typedef struct{
   unsigned int nachbar_id;
 } nachbar_node;
 
+typedef struct{
+  unsigned long unvisited;
+  unsigned long tentative_distance;
+  unsigned long last_node;
+} dijkstra_datum;
+
 const unsigned int  n_vertices = 8; // max(n_vertices) = 1e5
 const unsigned short degree = 3;
 
 void reduceDistance (void * in, void * inout, int * len, MPI_Datatype * mp) {
-  long * inLong = (long *) in;
-  long * inoutLong = (long *) inout;
+  dijkstra_datum * inLong = (dijkstra_datum *) in;
+  dijkstra_datum * inoutLong = (dijkstra_datum *) inout;
 
   int inIsMin = 0;
-  for (int i = 0; i < *(len) / 2; i++) {
-    inIsMin = inLong[i] < inoutLong[i] ? 1 : 0;
+  for (int i = 0; i < *(len); i++) {
+    inIsMin = inLong[i].tentative_distance < inoutLong[i].tentative_distance ? 1 : 0;
 
-    printf("I: %d, In %d %d, \t\tinout %d %d\n", i, inLong[i], inLong[i + (*len)/2], inoutLong[i], inoutLong[i + (*len)/2]);
+    if (inLong[i].unvisited == 2 ||  inoutLong[i].unvisited == 2){
+      inoutLong[i].unvisited = 1;
+    } else {
+      inoutLong[i].unvisited = (inLong[i].unvisited < inoutLong[i].unvisited) ? inLong[i].unvisited : inoutLong[i].unvisited;
+    }
+
+    printf("I: %d, In %d %d, \t\tinout %d %d\n", i, inLong[i].tentative_distance, inLong[i].tentative_distance, inoutLong[i].tentative_distance, inoutLong[i].tentative_distance);
 
     if (inIsMin > 0) {
-      inoutLong[i] = inLong[i];
-      inoutLong[i + (*len) / 2] = inLong[i + (*len) / 2];
+      inoutLong[i].tentative_distance = inLong[i].tentative_distance;
+      inoutLong[i].last_node = inLong[i].last_node;
     }
   }
 }
@@ -67,22 +79,22 @@ void read_adjacency(nachbar_node **nachbar_nodes){
   fclose(fp);
 }
 
-void printPath(int target, int source, unsigned long tentative_distance[]) {
+void printPath(int target, int source, dijkstra_datum * dijkstra_data) {
   printf("Into printpath");
   int current_id = target;
-  unsigned long shortest_distance = tentative_distance[current_id];
+  unsigned long shortest_distance = dijkstra_data[current_id].tentative_distance;
   // printf("current id: %lu, s:  %lu, t: %lu \n",current_id,source,target);
   int  n_steps = 0;
   while(current_id != source){
     n_steps++;
-    current_id = tentative_distance[current_id + n_vertices];
+    current_id = dijkstra_data[current_id].last_node;
   }
 
   current_id = target;
   unsigned int steps[n_steps];
   for(int i = n_steps-1; i >= 0; i--){
-    steps[i] = tentative_distance[current_id + n_vertices];
-    current_id = tentative_distance[current_id + n_vertices];
+    steps[i] = dijkstra_data[current_id].last_node;
+    current_id = dijkstra_data[current_id].last_node;
   }
   printf("Shortest distance: %lu \nTrue and actual path: ",shortest_distance);//
   for(int i = 0; i < n_steps; i++ ){
@@ -92,13 +104,14 @@ void printPath(int target, int source, unsigned long tentative_distance[]) {
 }
 
 // Method for every slave process.
-void dijkstra(unsigned int current_id, nachbar_node **nachbar_nodes, unsigned long *tentative_distance){
+void dijkstra(unsigned int current_id, nachbar_node **nachbar_nodes, dijkstra_datum dijkstra_data[]){
   nachbar_node nachbar;
   for(unsigned short i = 0; i < degree; i++  ){
     nachbar = nachbar_nodes[current_id][i];
-    if(tentative_distance[nachbar.nachbar_id] > tentative_distance[current_id] + nachbar.distance){
-      tentative_distance[nachbar.nachbar_id] = tentative_distance[current_id] + nachbar.distance;
-      tentative_distance[nachbar.nachbar_id + n_vertices] = current_id;
+    if(dijkstra_data[nachbar.nachbar_id].tentative_distance > dijkstra_data[current_id].tentative_distance + nachbar.distance){
+      dijkstra_data[nachbar.nachbar_id].tentative_distance = dijkstra_data[current_id].tentative_distance + nachbar.distance;
+      dijkstra_data[nachbar.nachbar_id].last_node = current_id;
+      dijkstra_data[nachbar.nachbar_id].unvisited = 2;
     }
     //printf("Visiting node %lu, checking node %lu: tent dist = %lu, \n",current_id,nachbar.nachbar_id,tentative_distance[nachbar.nachbar_id][0]);
   }
@@ -117,26 +130,20 @@ void startMethod(unsigned int source, unsigned int target){
 
   read_adjacency(nachbar_nodes);
 
-  unsigned long tentative_distance[n_vertices * 2]; //Storing tentative
-  // First half distances
-  // Second half source
+  dijkstra_datum dijkstra_data[n_vertices];
 
-  for(unsigned int i = 0; i < n_vertices; i++ ){
-    tentative_distance[i] = INFINITY;
-    tentative_distance[i + n_vertices] = 0;
-  }
-
-  tentative_distance[source] = 0;
-  tentative_distance[source + n_vertices] = -1;
-
-  int unvisited_set[n_vertices];
-
-  for(unsigned int i = 0; i < n_vertices; i++ ){
-    unvisited_set[i] = 1;
+  for(int i = 0; i < n_vertices; i++ ){
+    dijkstra_data[i].tentative_distance = INFINITY;
+    dijkstra_data[i].last_node = n_vertices;
+    dijkstra_data[i].unvisited = 1;
   }
 
   MPI_Op tentDistOp;
   MPI_Op_create(reduceDistance, 1, &tentDistOp);
+
+  MPI_Datatype dType;
+  MPI_Type_contiguous(3, MPI_UNSIGNED_LONG, &dType);
+  MPI_Type_commit(&dType);
   // STOP INIT VARIABLES
 
   // Get the number of processes
@@ -149,8 +156,9 @@ void startMethod(unsigned int source, unsigned int target){
 
   unsigned int current_id = source;
   if (world_rank == 0) {
-    dijkstra(current_id, nachbar_nodes, tentative_distance);
-    unvisited_set[current_id] = 0;
+    dijkstra_data[current_id].tentative_distance = 0;
+    dijkstra(current_id, nachbar_nodes, dijkstra_data);
+    dijkstra_data[current_id].unvisited = 0;
   }
 
   int block_size = n_vertices / world_size;
@@ -167,15 +175,18 @@ void startMethod(unsigned int source, unsigned int target){
     //else
     //  MPI_Reduce(&unvisited_set, &unvisited_set, n_vertices, MPI_SHORT, MPI_MIN, 0, MPI_COMM_WORLD);
     printf("Waiting for reduce %d\n", world_rank);
-    MPI_Allreduce(MPI_IN_PLACE, &unvisited_set, n_vertices, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &tentative_distance, 2 * n_vertices, MPI_UNSIGNED_LONG, tentDistOp, MPI_COMM_WORLD);
+    for(unsigned int i = 0; i < n_vertices; i++ ){
+      printf("Status: %lu %lu %lu\n", dijkstra_data[i].tentative_distance, dijkstra_data[i].last_node, dijkstra_data[i].unvisited);
+    }
+    //MPI_Allreduce(MPI_IN_PLACE, &unvisited_set, n_vertices, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &dijkstra_data, n_vertices, dType, tentDistOp, MPI_COMM_WORLD);
 
     printf("All reduce finished %d\n", world_rank);
 
     int sum = 0;
     // for(int i = world_rank * block_size; i < (world_rank + 1) * block_size; i++ ){
     for(unsigned int i = 0; i < n_vertices; i++ ){
-      sum += unvisited_set[i];
+      sum += dijkstra_data[i].unvisited;
     }
     printf("Sum calculated %d, rank %d\n", sum, world_rank);
     if (sum == 0) {
@@ -199,15 +210,15 @@ void startMethod(unsigned int source, unsigned int target){
 
     for(int i = world_rank * block_size; i < (world_rank + 1) * block_size; i++ ){
       printf("Trying to find new index %d %d\n", i, world_rank);
-      if(tentative_distance[i] < tmp_min && unvisited_set[i] > 0 ){
-        tmp_min = tentative_distance[i];
+      if(dijkstra_data[i].tentative_distance < tmp_min && dijkstra_data[i].unvisited > 0 ){
+        tmp_min = dijkstra_data[i].tentative_distance;
         current_id = i;
       }
     }
     if (current_id != n_vertices) {
       printf("Visiting %d\n", current_id);
-      dijkstra(current_id, nachbar_nodes, tentative_distance);
-      unvisited_set[current_id] = 0;
+      dijkstra(current_id, nachbar_nodes, dijkstra_data);
+      dijkstra_data[current_id].unvisited = 0;
     }
   }
 
@@ -215,7 +226,7 @@ void startMethod(unsigned int source, unsigned int target){
   // PRINT RESULTS
   if (world_rank == 0) {
     printf("Starting printpath");
-    printPath(target, source, tentative_distance);
+    printPath(target, source, dijkstra_data);
   }
 
 
